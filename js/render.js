@@ -292,22 +292,36 @@ function drawObjective(g, o) {
   sctx.fillStyle = 'rgba(6,8,16,.88)'; sctx.fillRect(px, py, pw, ph);
   sctx.strokeStyle = '#ffe600'; sctx.lineWidth = 3; sctx.strokeRect(px, py, pw, ph);
   sctx.font = 'bold 14px monospace'; hudText('CEL', px + 92, py + 20, '#ffe600');
-  sctx.font = 'bold 19px monospace';
-  const words = o.text.split(' '), lines = [''];
-  for (const w of words) { if ((lines[lines.length - 1] + w).length > 44) lines.push(''); lines[lines.length - 1] += w + ' '; }
+  const tw = pw - 104;
+  let size = 19, lines;
+  for (; size >= 14; size--) { sctx.font = `bold ${size}px monospace`; lines = wrapText(o.text, tw); if (lines.length <= 2) break; }
   lines.slice(0, 2).forEach((l, i) => hudText(l, px + 92, py + 45 + i * 24, '#fff'));
   if (o.dist > 1.8) { drawArrow(px + 44, py + 38, o.rel, 24, '#ffe600'); sctx.font = 'bold 16px monospace'; hudText(Math.round(o.dist) + ' m', px + 44, py + 76, '#ffe600', 'center'); }
   else { sctx.font = 'bold 18px monospace'; hudText('TU', px + 44, py + 46, '#4ad66d', 'center'); }
 }
 
+// zawija tekst wg rzeczywistej szerokosci (monospace bold 15px)
+function wrapText(str, maxW) {
+  const out = [''];
+  for (const w of str.split(' ')) {
+    const cur = out[out.length - 1];
+    if (cur && sctx.measureText(cur + ' ' + w).width > maxW) out.push(w); else out[out.length - 1] = cur ? cur + ' ' + w : w;
+  }
+  return out;
+}
+
 function drawQuestTracker(g) {
   const tr = trackedQuests(g.qs, QUEST_DEFS, g.npcDefs);
   if (!tr.length) return;
-  const y0 = 106, hgt = 44 + tr.length * 28;
-  sctx.fillStyle = 'rgba(6,8,16,.82)'; sctx.fillRect(10, y0, 430, hgt);
+  const y0 = 106, pw = 400, maxW = pw - 24;
+  sctx.font = 'bold 15px monospace';
+  const rows = tr.map(t => ({ ok: t.ready, lines: wrapText((t.ready ? '[ok] ' : '[ ] ') + t.title + ': ' + t.text, maxW) }));
+  const hgt = 40 + rows.reduce((n, r) => n + r.lines.length * 22 + 6, 0);
+  sctx.fillStyle = 'rgba(6,8,16,.82)'; sctx.fillRect(10, y0, pw, hgt);
   sctx.font = 'bold 16px monospace'; hudText('ZADANIA', 20, y0 + 24, '#ffe600');
   sctx.font = 'bold 15px monospace';
-  tr.forEach((t, i) => hudText((t.ready ? '[ok] ' : '[ ] ') + t.title + ': ' + t.text, 20, y0 + 52 + i * 28, t.ready ? '#4ad66d' : '#fff'));
+  let y = y0 + 50;
+  rows.forEach(r => r.lines.forEach((l, i) => { hudText(l, 20 + (i ? 16 : 0), y, r.ok ? '#4ad66d' : '#fff'); y += 22; }) || (y += 6));
 }
 
 function drawHints(g) {

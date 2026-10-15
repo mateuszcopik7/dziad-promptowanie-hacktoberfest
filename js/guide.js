@@ -70,8 +70,7 @@ function routeTarget(g, t) {
   const options = g.world.stairs.filter(s => s.floor === g.floor && Math.sign(s.to[0] - s.floor) === dir);
   if (!options.length) return t;
   const s = options.sort((a, b) => Math.hypot(a.x - p.x, a.y - p.y) - Math.hypot(b.x - p.x, b.y - p.y))[0];
-  const name = g.world.floors[t.floor].name;
-  return { floor: g.floor, x: s.x + 0.5, y: s.y + 0.5, label: 'Schody ' + (dir > 0 ? 'w górę' : 'w dół'), text: `${t.text} (idź schodami ${dir > 0 ? 'w górę' : 'w dół'}, cel: ${name})` };
+  return { floor: g.floor, x: s.x + 0.5, y: s.y + 0.5, label: 'Schody ' + (dir > 0 ? 'w górę' : 'w dół'), text: `${t.text} (schody ${dir > 0 ? 'w górę' : 'w dół'})` };
 }
 
 // { text, floor, x, y, label, dist, rel } albo null; rel = kat do celu wzgledem kierunku patrzenia (-pi..pi)
