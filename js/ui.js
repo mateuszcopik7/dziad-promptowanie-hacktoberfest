@@ -20,12 +20,12 @@ const slider = (label, key, min, max, step) => `
     <output>${FORMAT[key](settings[key])}</output></label>`;
 
 const stats = d => `
-  <p class="stats">${d.name}<br>Czas ${d.time} · Bugi ${d.kills}/${d.total} · Poziom gracza ${d.level}</p>`;
+  <p class="stats">Czas ${d.time} · Poziom gracza ${d.level} · Sale pokonane ${d.rooms}</p>`;
 
 const SCREENS = {
   main: () => `
     <h1>GLIWICE RAID</h1>
-    <p class="sub">Bugi opanowały ZSTI. Napraw je wszystkie.</p>
+    <p class="sub">Bugi opanowały ZSTI. Przejdź cały budynek.</p>
     <button data-a="play">Graj</button>
     <button data-a="howto">Jak grać</button>
     <button data-a="settings">Ustawienia</button>
@@ -33,11 +33,13 @@ const SCREENS = {
 
   howto: () => `
     <h2>Jak grać</h2>
-    <p class="text">Na każdym poziomie zniszcz wszystkie bugi. Zielone to zwykłe, fioletowe są szybkie, czerwony boss czeka w stołówce.</p>
-    <p class="text">Za każdego buga dostajesz XP. Nowy poziom daje więcej zdrowia, a co drugi także mocniejszy strzał.</p>
-    <p class="text">Zbieraj kanapki (+25 HP) i pendrive'y (+10 amunicji). Amunicja się kończy.</p>
+    <p class="text">Zwiedzaj ZSTI: parter i trzy piętra, połączone klatkami schodowymi. Na początku masz tylko ręce i latarkę.</p>
+    <p class="text">Rozmawiaj z NPC na korytarzach (E) i bierz questy. Quest ze strzelaniem daje broń na czas zadania.</p>
+    <p class="text">Wejdź w drzwi sali: ekran gaśnie, nauczyciel prosi o pomoc, a potem jest walka turowa: FIGHT, ACT, ITEM, MERCY. Boss ginie albo można go oszczędzić.</p>
+    <p class="text">Cel: odblokuj aulę i pokonaj Dyrektora Bugów.</p>
     <p class="text keys">${ACTIONS.map(([id, label]) => `${label}: <b>${keyLabel(settings.keys[id])}</b>`).join(' · ')}<br>
-      Mysz: obrót i strzał · Esc: pauza · M: minimapa · R: restart poziomu</p>
+      E: rozmowa · F: latarka · H: kanapka · Esc: pauza · M: minimapa<br>
+      W rozmowie i walce: strzałki, Z / Enter: potwierdź, X: wstecz</p>
     <button data-a="back">Wstecz</button>`,
 
   settings: () => `
@@ -50,7 +52,7 @@ const SCREENS = {
     ${ACTIONS.map(([id, label]) => `
       <div class="row"><span>${label}</span>
         <button class="key" data-k="${id}">${capturing === id ? 'naciśnij klawisz…' : keyLabel(settings.keys[id])}</button></div>`).join('')}
-    <p class="hint">Zajęty klawisz zamienia się miejscami. Zarezerwowane: Esc, M, R.</p>
+    <p class="hint">Zajęty klawisz zamienia się miejscami. Zarezerwowane: Esc, M, R, E, F, H, Z, X, Enter.</p>
     <button data-a="resetSettings">Przywróć domyślne</button>
     <button data-a="back">Wstecz</button>`,
 
@@ -60,18 +62,13 @@ const SCREENS = {
     <button data-a="settings">Ustawienia</button>
     <button data-a="menu">Wyjdź do menu</button>`,
 
-  levelDone: d => `
-    <h2 class="good">Poziom ukończony</h2>${stats(d)}
-    <button data-a="next">Następny poziom</button>
-    <button data-a="menu">Menu</button>`,
-
   dead: d => `
     <h2 class="bad">Zawieszenie systemu</h2>${stats(d)}
-    <button data-a="retry">Spróbuj ponownie</button>
+    <button data-a="retry">Wróć do gry</button>
     <button data-a="menu">Menu</button>`,
 
   victory: d => `
-    <h2 class="good">Wszystkie bugi naprawione</h2>${stats(d)}
+    <h2 class="good">Szkoła uratowana</h2>${stats(d)}
     <button data-a="play">Zagraj od nowa</button>
     <button data-a="menu">Menu</button>`,
 };

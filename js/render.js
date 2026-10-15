@@ -12,6 +12,9 @@ const buf = new Uint32Array(img.data.buffer);
 const zbuf = new Float32Array(W);
 let showMap = true;
 
+const AMBIENT_K = 0.2;              // im wiecej, tym szybciej robi sie ciemno z odlegloscia
+const FLASH_K = 0.05;               // ten sam wspolczynnik w stozku latarki
+
 function cameraOf(p) {
   const k = Math.tan(settings.fov * Math.PI / 360), dx = Math.cos(p.angle), dy = Math.sin(p.angle);
   return { dirX: dx, dirY: dy, planeX: -dy * k, planeY: dx * k };
@@ -22,16 +25,24 @@ function shade(c, sh) {
   return (255 << 24) | (b << 16) | (g << 8) | r;
 }
 
-function renderFlat() {
+// wspolczynnik zaciemnienia dla kolumny ekranu: latarka rozjasnia srodek
+function lightK(g, x) {
+  if (!g.player.flashlight) return AMBIENT_K;
+  const off = Math.min(1, Math.abs(2 * x / W - 1) * 1.6);
+  return FLASH_K + (AMBIENT_K - FLASH_K) * off * off;
+}
+
+function renderFlat(g) {
+  const fl = g.player.flashlight;
   for (let y = 0; y < H; y++) {
     let c;
     if (y < H / 2) {
       const t = y / (H / 2);
-      c = rgb(clamp(20 + t * 30), clamp(24 + t * 30), clamp(40 + t * 30));
+      c = rgb(clamp(16 + t * 26), clamp(20 + t * 26), clamp(34 + t * 28));
     } else {
       const d = 0.5 * H / (y - H / 2 + 1);
-      const sh = Math.min(256, 256 / (1 + d * 0.25));
-      c = shade(rgb(95, 95, 105), sh | 0);
+      const sh = Math.min(256, 256 / (1 + d * (fl ? 0.12 : 0.28)));
+      c = shade(rgb(105, 100, 96), sh | 0);
     }
     buf.fill(c, y * W, (y + 1) * W);
   }
@@ -62,7 +73,7 @@ function renderWalls(g, cam) {
     if ((side === 0 && rdx > 0) || (side === 1 && rdy < 0)) tx = 63 - tx;
     const tex = TEX[hit], step = 64 / lineH;
     let tp = (y0 - H / 2 + lineH / 2) * step;
-    const sh = Math.min(256, (256 / (1 + dist * 0.14)) * (side ? 0.72 : 1)) | 0;
+    const sh = Math.min(256, (256 / (1 + dist * lightK(g, x))) * (side ? 0.72 : 1)) | 0;
     for (let y = y0; y <= y1; y++) {
       buf[y * W + x] = shade(tex[(tp & 63) * 64 + tx], sh);
       tp += step;
@@ -70,12 +81,29 @@ function renderWalls(g, cam) {
   }
 }
 
+// lista obiektow do narysowania na biezacym pietrze
+function spriteList(g) {
+  const fs = g.floors[g.floor], list = [];
+  fs.enemies.filter(e => e.alive).forEach(e => list.push({ x: e.x, y: e.y, spr: SPRITES[e.type], scale: ENEMY_TYPES[e.type].scale, hit: e.hit }));
+  fs.pickups.forEach(k => list.push({ x: k.x, y: k.y, spr: SPRITES.food, scale: 0.28 }));
+  fs.items.forEach(k => list.push({ x: k.x, y: k.y, spr: SPRITES[k.item], scale: 0.3 }));
+  g.npcs.filter(n => n.floor === g.floor).forEach(n => {
+    const def = g.npcDefs[n.id];
+    list.push({ x: n.x, y: n.y, spr: npcSprite(def.color), scale: 0.85, marker: npcMarker(g.qs, QUEST_DEFS, g.npcDefs, n.id) });
+  });
+  const seen = new Set();
+  g.world.stairs.filter(s => s.floor === g.floor).forEach(s => {
+    if (seen.has(s.x + ',' + s.y)) return;
+    seen.add(s.x + ',' + s.y);
+    list.push({ x: s.x + 0.5, y: s.y + 0.5, spr: SPRITES.stairs, scale: 0.4 });
+  });
+  return list;
+}
+
+let markers = [];
 function renderSprites(g, cam) {
-  const p = g.player;
-  const list = [
-    ...g.enemies.filter(e => e.alive).map(e => ({ x: e.x, y: e.y, spr: SPRITES[e.type], scale: ENEMY_TYPES[e.type].scale, hit: e.hit })),
-    ...g.pickups.map(k => ({ x: k.x, y: k.y, spr: SPRITES[k.kind], scale: 0.28, hit: 0 })),
-  ];
+  const p = g.player, list = spriteList(g);
+  markers = [];
   for (const s of list) s.d = (s.x - p.x) ** 2 + (s.y - p.y) ** 2;
   list.sort((a, b) => b.d - a.d);
   const inv = 1 / (cam.planeX * cam.dirY - cam.dirX * cam.planeY);
@@ -89,30 +117,27 @@ function renderSprites(g, cam) {
     const w = Math.floor(h * s.spr.w / s.spr.h);
     const floorY = Math.floor(H / 2 + H / ty / 2);
     const y0 = floorY - h, x0 = scrX - (w >> 1);
-    const sh = Math.min(256, 256 / (1 + ty * 0.14)) | 0;
+    const sh = Math.min(256, 256 / (1 + ty * lightK(g, Math.max(0, Math.min(W - 1, scrX))))) | 0;
     for (let x = Math.max(0, x0); x < Math.min(W, x0 + w); x++) {
       if (ty >= zbuf[x]) continue;
       const tcx = Math.floor((x - x0) * s.spr.w / w);
       for (let y = Math.max(0, y0); y < Math.min(H, floorY); y++) {
-        let c = s.spr.data[Math.floor((y - y0) * s.spr.h / h) * s.spr.w + tcx];
+        const c = s.spr.data[Math.floor((y - y0) * s.spr.h / h) * s.spr.w + tcx];
         if (!c) continue;
         buf[y * W + x] = s.hit > 0 ? rgb(255, 255, 255) : shade(c, sh);
       }
     }
+    if (s.marker && scrX >= 0 && scrX < W && ty < zbuf[scrX]) markers.push({ x: scrX, y: y0 - 3, ch: s.marker });
   }
 }
 
-function drawGun(g) {
-  const kick = g.flash > 0 ? 6 : 0, cx = W / 2, by = H + kick;
-  lctx.fillStyle = '#2b2b33'; lctx.fillRect(cx - 14, by - 46, 28, 46);
-  lctx.fillStyle = '#44444f'; lctx.fillRect(cx - 9, by - 62, 18, 20);
-  lctx.fillStyle = '#6a6a78'; lctx.fillRect(cx - 4, by - 70, 8, 12);
-  lctx.fillStyle = '#4ad66d'; lctx.fillRect(cx - 12, by - 30, 24, 3);
-  if (g.flash > 0) {
-    lctx.fillStyle = '#ffe066'; lctx.fillRect(cx - 6, by - 84, 12, 14);
-    lctx.fillStyle = '#fff'; lctx.fillRect(cx - 3, by - 80, 6, 8);
-  }
-  lctx.fillStyle = '#fff'; lctx.fillRect(cx - 1, H / 2 - 4, 2, 8); lctx.fillRect(cx - 4, H / 2 - 1, 8, 2);
+// rece, pistolet i latarka z js/weapon-art.js
+function drawFirstPerson(g) {
+  const p = g.player, bob = g.moving ? Math.sin(g.walk * 0.22) * 2.5 : 0;
+  if (p.weapon) drawPistol(lctx, W, H, g.flash > 0 ? 4 : 0, g.flash, bob);
+  else drawHands(lctx, W, H, bob, 0);
+  if (p.flashlight) drawFlashlight(lctx, W, H, true, bob);
+  if (p.weapon) { lctx.fillStyle = '#fff'; lctx.fillRect(W / 2 - 1, H / 2 - 4, 2, 8); lctx.fillRect(W / 2 - 4, H / 2 - 1, 8, 2); }
 }
 
 function hudText(str, x, y, color, align = 'left') {
@@ -125,19 +150,33 @@ function hudBar(x, y, w, frac, color) {
 }
 
 function drawMinimap(g) {
-  const c = 5, gw = g.grid[0].length * c, gh = g.grid.length * c, x0 = W * SCALE - gw - 12, y0 = 12, p = g.player;
-  sctx.fillStyle = 'rgba(0,0,0,.55)'; sctx.fillRect(x0 - 3, y0 - 3, gw + 6, gh + 6);
-  sctx.fillStyle = '#8a8a99';
-  g.grid.forEach((row, y) => row.forEach((v, x) => { if (v) sctx.fillRect(x0 + x * c, y0 + y * c, c, c); }));
-  sctx.fillStyle = '#ffd166';
-  for (const k of g.pickups) sctx.fillRect(x0 + k.x * c - 1, y0 + k.y * c - 1, 3, 3);
+  const c = 3, gw = g.grid[0].length * c, gh = g.grid.length * c, x0 = W * SCALE - gw - 10, y0 = 10, p = g.player;
+  sctx.fillStyle = 'rgba(0,0,0,.6)'; sctx.fillRect(x0 - 3, y0 - 3, gw + 6, gh + 6);
+  g.grid.forEach((row, y) => row.forEach((v, x) => {
+    if (!v) return;
+    sctx.fillStyle = v === 4 ? '#c8873a' : '#6d6d7e';
+    sctx.fillRect(x0 + x * c, y0 + y * c, c, c);
+  }));
+  g.world.floors[g.floor].stairCells.forEach((row, y) => row.forEach((v, x) => {
+    if (v) { sctx.fillStyle = 'rgba(74,214,109,.35)'; sctx.fillRect(x0 + x * c, y0 + y * c, c, c); }
+  }));
+  sctx.fillStyle = '#7cc4ff';
+  g.npcs.filter(n => n.floor === g.floor).forEach(n => sctx.fillRect(x0 + n.x * c - 1, y0 + n.y * c - 1, 3, 3));
   sctx.fillStyle = '#ff5555';
-  for (const e of g.enemies) if (e.alive) sctx.fillRect(x0 + e.x * c - 2, y0 + e.y * c - 2, 4, 4);
+  g.floors[g.floor].enemies.forEach(e => { if (e.alive) sctx.fillRect(x0 + e.x * c - 1, y0 + e.y * c - 1, 3, 3); });
   sctx.fillStyle = '#4ad66d'; sctx.fillRect(x0 + p.x * c - 2, y0 + p.y * c - 2, 4, 4);
   sctx.strokeStyle = '#4ad66d'; sctx.beginPath();
   sctx.moveTo(x0 + p.x * c, y0 + p.y * c);
-  sctx.lineTo(x0 + (p.x + Math.cos(p.angle) * 1.5) * c, y0 + (p.y + Math.sin(p.angle) * 1.5) * c);
+  sctx.lineTo(x0 + (p.x + Math.cos(p.angle) * 3) * c, y0 + (p.y + Math.sin(p.angle) * 3) * c);
   sctx.stroke();
+}
+
+function drawQuestTracker(g) {
+  const tr = trackedQuests(g.qs, QUEST_DEFS, g.npcDefs);
+  if (!tr.length) return;
+  sctx.font = 'bold 13px monospace'; hudText('ZADANIA', 14, 22, '#ffe600');
+  sctx.font = '13px monospace';
+  tr.forEach((t, i) => hudText(t.title + ': ' + t.text, 14, 42 + i * 18, t.ready ? '#4ad66d' : '#fff'));
 }
 
 function drawHud(g) {
@@ -147,26 +186,31 @@ function drawHud(g) {
   sctx.font = 'bold 18px monospace';
   hudText('HP ' + p.hp + '/' + p.maxHp, 16, y + 20, '#ff6b6b');
   hudBar(16, y + 28, 150, p.hp / p.maxHp, '#ff6b6b');
-  hudText('AMMO ' + p.ammo, 200, y + 20, '#ffd166');
-  hudText('LVL ' + p.level, 340, y + 20, '#7cc4ff');
-  hudBar(340, y + 28, 150, p.xp / xpNeeded(p.level), '#7cc4ff');
-  hudText('BUGI ' + g.kills + '/' + g.total, 530, y + 20, '#4ad66d');
+  hudText('LVL ' + p.level, 200, y + 20, '#7cc4ff');
+  hudBar(200, y + 28, 130, p.xp / xpNeeded(p.level), '#7cc4ff');
+  hudText('KANAPKI ' + g.food, 360, y + 20, '#ffd166');
+  if (p.weapon) hudText('AMMO ' + p.ammo, 540, y + 20, '#ffd166');
   sctx.font = '14px monospace';
-  hudText(g.name, bw - 16, y + 20, '#aaa', 'right');
+  hudText(g.world.floors[g.floor].name, bw - 16, y + 20, '#aaa', 'right');
+  hudText(p.flashlight ? 'F: latarka ON' : 'F: latarka', bw - 16, y + 38, p.flashlight ? '#ffe9a8' : '#777', 'right');
   if (g.msgT > 0) {
-    sctx.font = 'bold 40px monospace';
+    sctx.font = 'bold 34px monospace';
     sctx.globalAlpha = Math.min(1, g.msgT / 30);
     hudText(g.msg, bw / 2, 110, '#7cc4ff', 'center');
     sctx.globalAlpha = 1;
   }
+  if (g.prompt) { sctx.font = 'bold 18px monospace'; hudText(g.prompt, bw / 2, y - 14, '#fff', 'center'); }
+  sctx.font = 'bold 28px monospace';
+  for (const m of markers) hudText(m.ch, m.x * SCALE, m.y * SCALE, m.ch === '?' ? '#4ad66d' : '#ffe600', 'center');
+  drawQuestTracker(g);
   if (showMap) drawMinimap(g);
 }
 
 function render(g, withHud) {
   const cam = cameraOf(g.player);
-  renderFlat(); renderWalls(g, cam); renderSprites(g, cam);
+  renderFlat(g); renderWalls(g, cam); renderSprites(g, cam);
   lctx.putImageData(img, 0, 0);
-  drawGun(g);
+  drawFirstPerson(g);
   sctx.drawImage(low, 0, 0, W * SCALE, H * SCALE);
   if (withHud) drawHud(g);
 }

@@ -95,6 +95,24 @@ const TEX = {
     if (rail) return rgb(225, 226, 220);
     return rgb(clamp(226 + j), clamp(227 + j), clamp(222 + j));
   }),
+  7: makeTex((x, y) => {                      // sciana korytarza z oknem
+    const j = jitter(x, y, 8), wx = x >= 10 && x <= 54, wy = y >= 8 && y <= 42;
+    if (wx && wy) {
+      if (x === 10 || x === 54 || y === 8 || y === 42 || x === 32 || y === 25) return rgb(210, 214, 220);        // rama i szprosy
+      const t = (y - 8) / 34;
+      return rgb(clamp(120 + 60 * t + j), clamp(170 + 40 * t + j), clamp(235 - 10 * t + j));                       // niebo
+    }
+    if (y >= 44 && y <= 47 && wx) return rgb(190, 192, 198);                                                       // parapet
+    if (y >= 52) return rgb(clamp(60 + j), clamp(80 + j), clamp(120 + j));
+    return rgb(clamp(222 + j), clamp(220 + j), clamp(208 + j));
+  }),
+  8: makeTex((x, y) => {                      // lawka przy scianie
+    const j = jitter(x, y, 10);
+    if (y < 8 || y > 58) return rgb(clamp(222 + j), clamp(220 + j), clamp(208 + j));
+    if (x < 4 || x > 59 || (y >= 40 && y <= 44)) return rgb(50, 90, 170);                                         // niebieski stelaz
+    const slat = Math.floor((y - 8) / 6) % 2;
+    return rgb(clamp(slat ? 170 : 150 + j), clamp(slat ? 118 : 100 + j), clamp(slat ? 70 : 60 + j));
+  }),
 };
 
 // sprite z tekstu: znak -> kolor, '.' = przezroczysty
@@ -150,3 +168,54 @@ const SPRITES = {
     '...yy...',
   ], { g: rgb(150, 150, 160), b: rgb(40, 90, 200), y: rgb(230, 200, 60) }),
 };
+
+// postac NPC: 'h' wlosy, 's' skora, 'e' oczy, 'c' ubranie, 'd' spodnie
+const NPC_ROWS = [
+  '....hhhh....',
+  '...hhhhhh...',
+  '...ssssss...',
+  '...sessse...',
+  '...ssssss...',
+  '....ssss....',
+  '..cccccccc..',
+  '.cccccccccc.',
+  '.cccccccccc.',
+  'sscccccccccs',
+  'ss.cccccc.ss',
+  '...cccccc...',
+  '...cccccc...',
+  '...dd..dd...',
+  '...dd..dd...',
+  '...dd..dd...',
+  '..ddd..ddd..',
+];
+const npcSpriteCache = {};
+function npcSprite(hex) {                       // sprite NPC w kolorze ubrania hex (#rrggbb)
+  if (!npcSpriteCache[hex]) {
+    const v = parseInt(hex.slice(1), 16);
+    npcSpriteCache[hex] = makeSprite(NPC_ROWS, { h: rgb(60, 40, 30), s: rgb(230, 190, 160), e: rgb(20, 20, 30), c: rgb(v >> 16, (v >> 8) & 255, v & 255), d: rgb(40, 44, 60) });
+  }
+  return npcSpriteCache[hex];
+}
+
+SPRITES.pieczatka = makeSprite([
+  '........',
+  '..wwww..',
+  '..wwww..',
+  '...ww...',
+  '..rrrr..',
+  '.rrrrrr.',
+  '.rrrrrr.',
+  '........',
+], { w: rgb(150, 100, 60), r: rgb(200, 50, 50) });
+
+SPRITES.stairs = makeSprite([
+  '....gg....',
+  '...gggg...',
+  '..gggggg..',
+  '.gggggggg.',
+  '....gg....',
+  '....gg....',
+  '....gg....',
+  '....gg....',
+], { g: rgb(74, 214, 109) });

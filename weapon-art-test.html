@@ -1,0 +1,184 @@
+<!doctype html>
+<html lang="pl">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>Test grafiki broni</title>
+  <style>
+    :root {
+      color-scheme: dark;
+      font-family: monospace;
+    }
+
+    body {
+      display: grid;
+      place-content: center;
+      min-height: 100vh;
+      margin: 0;
+      background: #0d1018;
+      color: #dce5f2;
+    }
+
+    canvas {
+      width: 960px;
+      height: 600px;
+      max-width: calc(100vw - 24px);
+      max-height: calc((100vw - 24px) * 0.625);
+      border: 3px solid #465268;
+      image-rendering: pixelated;
+      image-rendering: crisp-edges;
+    }
+
+    .panel {
+      display: flex;
+      justify-content: space-between;
+      gap: 12px;
+      margin-top: 10px;
+    }
+
+    #label {
+      color: #4ad66d;
+      font-weight: bold;
+    }
+
+    .buttons {
+      display: flex;
+      flex-wrap: wrap;
+      gap: 5px;
+      margin-top: 10px;
+    }
+
+    button {
+      border: 1px solid #65738b;
+      padding: 5px 8px;
+      background: #262d3a;
+      color: #dce5f2;
+      font: inherit;
+      cursor: pointer;
+    }
+
+    button.active {
+      border-color: #4ad66d;
+      color: #4ad66d;
+    }
+  </style>
+</head>
+<body>
+  <main>
+    <canvas id="screen" width="320" height="200"></canvas>
+    <div class="panel">
+      <span id="label"></span>
+      <span>klawisze 1-6</span>
+    </div>
+    <div class="buttons" id="buttons"></div>
+  </main>
+
+  <script src="js/weapon-art.js"></script>
+  <script>
+    'use strict';
+
+    const canvas = document.getElementById('screen');
+    const ctx = canvas.getContext('2d');
+    const label = document.getElementById('label');
+    const buttons = document.getElementById('buttons');
+    const W = canvas.width;
+    const H = canvas.height;
+    const states = [
+      'Rece - idle',
+      'Cios',
+      'Pistolet - idle / strzal',
+      'Latarka - wylaczona',
+      'Latarka - wlaczona',
+      'Pistolet + latarka'
+    ];
+    let state = 0;
+    let selectedAt = performance.now();
+
+    function drawBackground() {
+      ctx.fillStyle = '#111722';
+      ctx.fillRect(0, 0, W, H);
+
+      // Sufit i sciany sa gradientem z poziomych pasow.
+      const ceiling = ['#151b27', '#1b2230', '#222a38', '#293240'];
+      const floor = ['#303744', '#292f3a', '#222832', '#1b2029'];
+      for (let i = 0; i < 4; i++) {
+        ctx.fillStyle = ceiling[i];
+        ctx.fillRect(0, i * 25, W, 25);
+        ctx.fillStyle = floor[i];
+        ctx.fillRect(0, 100 + i * 25, W, 25);
+      }
+
+      // Perspektywa korytarza z prostokatow.
+      ctx.fillStyle = '#0d121b';
+      ctx.fillRect(0, 0, 54, H);
+      ctx.fillRect(W - 54, 0, 54, H);
+      ctx.fillStyle = '#303a49';
+      ctx.fillRect(54, 0, 5, H);
+      ctx.fillRect(W - 59, 0, 5, H);
+      ctx.fillStyle = '#121925';
+      ctx.fillRect(116, 35, 88, 65);
+      ctx.fillStyle = '#3a4555';
+      ctx.fillRect(112, 31, 96, 5);
+      ctx.fillRect(112, 31, 5, 69);
+      ctx.fillRect(203, 31, 5, 69);
+      ctx.fillStyle = '#222b37';
+      ctx.fillRect(0, 98, W, 4);
+      ctx.fillStyle = '#394351';
+      ctx.fillRect(64, 123, 192, 2);
+      ctx.fillRect(32, 155, 256, 3);
+    }
+
+    function setState(next) {
+      state = (next + states.length) % states.length;
+      selectedAt = performance.now();
+      label.textContent = (state + 1) + '. ' + states[state];
+      document.querySelectorAll('button').forEach((button, index) => {
+        button.classList.toggle('active', index === state);
+      });
+    }
+
+    states.forEach((name, index) => {
+      const button = document.createElement('button');
+      button.textContent = (index + 1) + ' ' + name;
+      button.addEventListener('click', () => setState(index));
+      buttons.appendChild(button);
+    });
+
+    addEventListener('keydown', (event) => {
+      const next = Number(event.key) - 1;
+      if (next >= 0 && next < states.length) setState(next);
+    });
+
+    function frame(now) {
+      if (now - selectedAt > 4000) setState(state + 1);
+      const t = now / 1000;
+      const bob = Math.round(Math.sin(t * 5) * 3);
+      drawBackground();
+
+      if (state === 0) drawHands(ctx, W, H, bob, 0);
+      if (state === 1) {
+        const punch = (Math.sin(t * 5) + 1) / 2;
+        drawHands(ctx, W, H, bob, punch);
+      }
+      if (state === 2) {
+        const shotTime = (t % 1.4) / 1.4;
+        const firing = shotTime < 0.16;
+        const kick = firing ? Math.round((1 - shotTime / 0.16) * 6) : 0;
+        drawPistol(ctx, W, H, kick, firing ? 3 : 0, bob);
+      }
+      if (state === 3) drawFlashlight(ctx, W, H, false, bob);
+      if (state === 4) drawFlashlight(ctx, W, H, true, bob);
+      if (state === 5) {
+        drawFlashlight(ctx, W, H, true, bob);
+        drawPistol(ctx, W - 34, H, 0, 0, bob);
+      }
+
+      requestAnimationFrame(frame);
+    }
+
+    ctx.imageSmoothingEnabled = false;
+    setState(0);
+    requestAnimationFrame(frame);
+  </script>
+</body>
+</html>

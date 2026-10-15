@@ -12,7 +12,7 @@ const DEFAULT_SETTINGS = {
   },
 };
 
-const RESERVED_KEYS = ['Escape', 'KeyM', 'KeyR'];
+const RESERVED_KEYS = ['Escape', 'KeyM', 'KeyR', 'KeyE', 'KeyF', 'KeyH', 'KeyZ', 'KeyX', 'Enter'];
 const STORE_KEY = 'gliwice-raid-settings';
 const copySettings = s => ({ ...s, keys: { ...s.keys } });
 

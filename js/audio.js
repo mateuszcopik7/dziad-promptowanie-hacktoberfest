@@ -54,3 +54,20 @@ const SFX = {
 function playSfx(name) {
   if (SFX[name]) SFX[name]();
 }
+
+// dzwieki scen: dialog (blipy glosu NPC) i walka. Zdarzenia to stringi (walka) albo { type, pitch } (dialog).
+const SCENE_SFX = {
+  blip: e => tone(e.pitch * (0.92 + Math.random() * 0.16), 0.045, 'square', 0, 0.07),
+  move: () => tone(520, 0.03, 'square', 0, 0.08),
+  select: () => tone(780, 0.06, 'square', 0, 0.1),
+  hit: () => { noise(0.06, 0.3); tone(220, 0.1, 'sawtooth', -120, 0.2); },
+  miss: () => tone(120, 0.08, 'square', 0, 0.12),
+  hurt: () => tone(90, 0.15, 'sawtooth', -40, 0.25),
+  heal: () => tone(660, 0.12, 'square', 0, 0.15),
+  act: () => tone(440, 0.06, 'square', 0, 0.12),
+};
+
+function playSceneSfx(e) {
+  const name = typeof e === 'string' ? e : e.type;
+  if (SCENE_SFX[name]) SCENE_SFX[name](e);
+}
