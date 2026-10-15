@@ -379,20 +379,29 @@ function wrapText(str, maxW) {
   return out;
 }
 
+// waski pionowy panel zadan: tytul questu, pod nim postep mniejsza czcionka
 function drawQuestTracker(g) {
   const tr = trackedQuests(g.qs, QUEST_DEFS, g.npcDefs);
   if (!tr.length) return;
-  const y0 = 80, pw = 400, maxW = pw - 24;
-  sctx.font = 'bold 15px monospace';
-  const rows = tr.map(t => ({ ok: t.ready, lines: wrapText((t.ready ? '[ok] ' : '[ ] ') + t.title + ': ' + t.text, maxW) }));
-  const hgt = 40 + rows.reduce((n, r) => n + r.lines.length * 22 + 6, 0);
-  sctx.fillStyle = 'rgba(6,8,16,.82)'; sctx.fillRect(10, y0, pw, hgt);
-  sctx.fillStyle = '#ffe600'; sctx.fillRect(10, y0, 4, hgt);
-  sctx.strokeStyle = 'rgba(255,230,0,.35)'; sctx.lineWidth = 1; sctx.strokeRect(10, y0, pw, hgt);
-  sctx.font = 'bold 16px monospace'; hudText('ZADANIA', 20, y0 + 24, '#ffe600');
-  sctx.font = 'bold 15px monospace';
-  let y = y0 + 50;
-  rows.forEach(r => r.lines.forEach((l, i) => { hudText(l, 20 + (i ? 16 : 0), y, r.ok ? '#4ad66d' : '#fff'); y += 22; }) || (y += 6));
+  const x0 = 10, y0 = 80, pw = 236, maxW = pw - 22;
+  const rows = tr.map(t => {
+    sctx.font = 'bold 13px monospace'; const title = wrapText((t.ready ? '✓ ' : '• ') + t.title, maxW);
+    sctx.font = '12px monospace'; const text = wrapText(t.text, maxW - 10);
+    return { ok: t.ready, title, text };
+  });
+  const hgt = 30 + rows.reduce((n, r) => n + r.title.length * 16 + r.text.length * 15 + 8, 0);
+  sctx.fillStyle = 'rgba(6,8,16,.78)'; sctx.fillRect(x0, y0, pw, hgt);
+  sctx.fillStyle = '#ffe600'; sctx.fillRect(x0, y0, 3, hgt);
+  sctx.strokeStyle = 'rgba(255,230,0,.3)'; sctx.lineWidth = 1; sctx.strokeRect(x0, y0, pw, hgt);
+  sctx.font = 'bold 13px monospace'; hudText('ZADANIA', x0 + 11, y0 + 18, '#ffe600');
+  let y = y0 + 36;
+  rows.forEach(r => {
+    sctx.font = 'bold 13px monospace';
+    r.title.forEach(l => { hudText(l, x0 + 11, y, r.ok ? '#4ad66d' : '#fff'); y += 16; });
+    sctx.font = '12px monospace';
+    r.text.forEach(l => { hudText(l, x0 + 21, y, r.ok ? '#4ad66d' : '#c8cfdd'); y += 15; });
+    y += 8;
+  });
 }
 
 function drawHud(g) {
