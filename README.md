@@ -61,13 +61,25 @@ python3 mapa/sprawdz.py
 | `js/render.js` | raycaster, sprite'y, latarka, HUD, minimapa |
 | `js/weapon-art.js` | ręce, pistolet i latarka (pixel art) |
 | `js/assets.js`, `js/audio.js`, `js/settings.js`, `js/ui.js`, `js/main.js` | tekstury, dźwięki, ustawienia, menu, pętla gry |
-| `bot/bot.py` | bot w Pythonie (Playwright), do dostosowania do nowej gry |
+| `bot/bot.py` | bot w Pythonie (Playwright): przechodzi quest „Bugi w korytarzu” sam |
 | `tests/` | testy w Node (`*.test.js`) i Pythonie |
+
+## Bot (Automation)
+
+Bot steruje prawdziwą grą w Chromium przez Playwright: czyta stan z `window.raid.state()`, planuje trasę (BFS po siatce piętra), celuje i strzela przez `window.raid.setIntent()`, a dialogi przechodzi klawiszami. Misja: idzie do Woźnego Heńka, przyjmuje quest, zabija 5 bugów, wraca po nagrodę (około 30 s).
+
+```bash
+python3 -m venv .venv && .venv/bin/pip install -r bot/requirements.txt && .venv/bin/playwright install chromium
+python3 -m http.server 8765 &
+.venv/bin/python bot/bot.py --url http://localhost:8765/index.html          # z oknem
+.venv/bin/python bot/bot.py --url http://localhost:8765/index.html --headless
+```
 
 ## Testy
 
 ```bash
 for t in game quests battle dialogue encounter; do node tests/$t.test.js; done
+python3 -m unittest tests.test_bot   # logika bota bez przeglądarki
 ```
 
 Strony testowe: `battle-test.html`, `dialogue-test.html`, `room-test.html`, `weapon-art-test.html`.

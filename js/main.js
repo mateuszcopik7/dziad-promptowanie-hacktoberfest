@@ -287,7 +287,8 @@ window.raid = {
   state: () => ({
     scene, floor: game.floor, state: game.state, ticks: game.ticks, player: { ...game.player }, food: game.food,
     npcs: game.npcs.filter(n => n.floor === game.floor), enemies: game.floors[game.floor].enemies.filter(e => e.alive).map(e => ({ type: e.type, x: e.x, y: e.y })),
-    quests: JSON.parse(JSON.stringify(game.qs.quests)), grid: game.grid, cleared: [...game.cleared],
+    quests: JSON.parse(JSON.stringify(game.qs.quests)), grid: game.grid, cleared: [...game.cleared], prompt: game.prompt,
+    dialogue: dialogue && { npc: dialogue.npc, phase: dialogue.phase, options: dialogue.options.map(o => o.id), cursor: dialogue.cursor },
   }),
   setIntent: it => { botIntent = it; },
   action: a => ui.onAction(a),
