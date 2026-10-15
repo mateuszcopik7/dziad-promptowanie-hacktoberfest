@@ -103,12 +103,31 @@ def npc_cells(state, skip=None):
     return out
 
 
+def clear_line(grid, a, b):
+    """Widocznosc z zapasem na promien gracza: trzy rownolegle promienie (srodek i boki)."""
+    d = math.hypot(b["x"] - a["x"], b["y"] - a["y"]) or 1
+    nx, ny = -(b["y"] - a["y"]) / d * 0.3, (b["x"] - a["x"]) / d * 0.3
+    return all(has_los(grid, a["x"] + nx * k, a["y"] + ny * k, b["x"] + nx * k, b["y"] + ny * k) for k in (-1, 0, 1))
+
+
+def segment_free(a, b, blocked):
+    """Czy prosty odcinek nie wchodzi w komorki zajete przez NPC."""
+    steps = max(1, math.ceil(math.hypot(b["x"] - a["x"], b["y"] - a["y"]) / 0.25))
+    for i in range(steps + 1):
+        x = a["x"] + (b["x"] - a["x"]) * i / steps
+        y = a["y"] + (b["y"] - a["y"]) * i / steps
+        if (int(x), int(y)) in blocked:
+            return False
+    return True
+
+
 def next_waypoint(state, target, skip=None):
-    """Srodek nastepnej komorki trasy do celu; sam cel, gdy go widac i droga jest wolna."""
+    """Srodek nastepnej komorki trasy do celu; sam cel, gdy go widac i droga nie wchodzi w NPC."""
     p, grid = state["player"], state["grid"]
-    if has_los(grid, p["x"], p["y"], target["x"], target["y"]) and not (npc_cells(state, skip) & {cell_of(target)}):
+    blocked = npc_cells(state, skip)
+    if clear_line(grid, p, target) and segment_free(p, target, blocked):
         return target["x"], target["y"]
-    path = find_path(grid, cell_of(p), (int(target["x"]), int(target["y"])), npc_cells(state, skip))
+    path = find_path(grid, cell_of(p), (int(target["x"]), int(target["y"])), blocked)
     if path and len(path) > 1:
         return path[1][0] + 0.5, path[1][1] + 0.5
     return target["x"], target["y"]

@@ -61,10 +61,13 @@ python3 mapa/sprawdz.py
 | `js/render.js` | raycaster, sprite'y, latarka, HUD, minimapa |
 | `js/weapon-art.js` | ręce, pistolet i latarka (pixel art) |
 | `js/assets.js`, `js/audio.js`, `js/settings.js`, `js/ui.js`, `js/main.js` | tekstury, dźwięki, ustawienia, menu, pętla gry |
+| `js/autoplay.js` | autogra w przeglądarce (przycisk w menu), logika bota |
 | `bot/bot.py` | bot w Pythonie (Playwright): przechodzi całą grę sam |
 | `tests/` | testy w Node (`*.test.js`) i Pythonie |
 
 ## Bot (Automation)
+
+W menu gry jest przycisk **Bot przechodzi grę**: ta sama logika działa wtedy w przeglądarce (`js/autoplay.js`) i gra sama od początku do finału. Esc przejmuje sterowanie. Poniżej bot zewnętrzny w Pythonie (Playwright).
 
 Bot przechodzi całą grę sam, w prawdziwym Chromium przez Playwright. Czyta stan z `window.raid.state()` i `window.raid.world()`, planuje trasę (BFS po siatce piętra, schody między piętrami), strzela i chodzi przez `window.raid.setIntent()`, a dialogi i walki obsługuje klawiszami. Przebieg: 4 questy po kolei (Woźny Heniek, Sekretarka, Uczeń i Bibliotekarka, Dyrektorka), potem aula i walka z Dyrektorem Bugów: ACT do pełnego nastroju, potem MERCY. Pociski omija planerem, który sprawdza bezpieczne punkty w pudełku na kilkadziesiąt klatek do przodu. Cała gra w około 2 minuty przy `--speed 3`.
 
@@ -78,7 +81,7 @@ python3 -m http.server 8765 &
 ## Testy
 
 ```bash
-for t in game quests battle dialogue encounter; do node tests/$t.test.js; done
+for t in game quests battle dialogue encounter autoplay; do node tests/$t.test.js; done
 python3 -m unittest tests.test_bot   # logika bota bez przeglądarki
 ```
 

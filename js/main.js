@@ -11,6 +11,7 @@ let game = createGame();
 let dialogue = null, dialogueColor = '#fff', dialogueCallback = null, enc = null;
 let acc = 0, last = performance.now(), tick = 0, mouseDX = 0, mouseDown = false;
 let sceneHeld = {}, sceneQueue = [];
+let autoplay = false, apTick = 0;                     // autogra (przycisk w menu): bot w przegladarce, Esc zatrzymuje
 let botSpeed = 1;                                     // mnoznik tempa symulacji (bot przyspiesza gre)
 let botIntent = null;                                 // gdy ustawione, zastepuje klawiature (bot)
 
@@ -51,6 +52,7 @@ function clearInput() {
 }
 
 function startGame() {
+  autoplay = false; botSpeed = 1;
   game = createGame();
   scene = 'play';
   acc = 0;
@@ -58,13 +60,23 @@ function startGame() {
   hideScreen();
   audioInit();
   lockPointer();
+  startIntro();
+}
+
+function startAutoplay() {
+  startGame();
+  autoplay = true; apTick = 0; botSpeed = 2;
+}
+
+function stopAutoplay() {
+  autoplay = false; botSpeed = 1; sceneHeld = {};
 }
 
 function backToPlay() {
   scene = 'play';
   acc = 0;
   clearInput();
-  lockPointer();
+  if (!autoplay) lockPointer();
 }
 
 function pause() {
@@ -96,6 +108,21 @@ function startDialogue(node, color, voice, onDone) {
   acc = 0;
   clearInput();
   unlockPointer();
+}
+
+// scenka na starcie: Przewodnik uczy sterowania (klawisze z ustawien gracza)
+function startIntro() {
+  const k = settings.keys, y = s => `{c:yellow}${s}{/c}`;
+  const lines = [
+    '* Hej!{p} Jestem ' + y('Przewodnik') + '.{p} Pokażę Ci, jak się tu chodzi.',
+    `* Ruch: ${y([k.forward, k.left, k.back, k.right].map(keyLabel).join(' '))}.{p} Rozglądasz się ${y('myszą')} albo ${y(keyLabel(k.turnLeft) + ' ' + keyLabel(k.turnRight))}.`,
+    `* ${y('E')}: rozmowa.{p} ${y('F')}: latarka.{p} ${y('H')}: kanapka leczy.`,
+    `* ${y('M')}: mapa.{p} ${y('Esc')}: pauza.`,
+    `* Wejdź w drzwi sali, a zacznie się walka.{p} W walce: strzałki i ${y('Z')}.`,
+    '* Żółta strzałka u góry pokazuje cel.{p} Zacznij od ' + y('Woźnego Heńka') + '.{p} Powodzenia!',
+  ];
+  const def = game.npcDefs[GUIDE_NPC.id];
+  startDialogue({ npc: def.name, lines, options: [{ id: 'ok', label: 'Ruszam' }] }, def.color, def.voice, null);
 }
 
 function talkToNpc(id) {
@@ -142,6 +169,7 @@ function finishEncounter() {
 }
 
 function showEnd(which) {
+  stopAutoplay();
   scene = which;
   clearInput();
   unlockPointer();
@@ -160,6 +188,7 @@ function handleRequest(req) {
 ui.onAction = action => {
   switch (action) {
     case 'play': startGame(); break;
+    case 'bot': startAutoplay(); break;
     case 'howto': ui.from = 'main'; showScreen('howto'); break;
     case 'settings': ui.from = scene === 'paused' ? 'pause' : 'main'; showScreen('settings'); break;
     case 'back': showScreen(ui.from); break;
@@ -177,6 +206,7 @@ function onEscape() {
 }
 
 addEventListener('keydown', e => {
+  if (e.code === 'Escape' && autoplay) { stopAutoplay(); return; }
   if (scene === 'dialogue' || scene === 'encounter') {
     const a = SCENE_KEYS[e.code];
     if (a) { e.preventDefault(); if (!e.repeat) sceneQueue.push(a); sceneHeld[a] = true; }
@@ -222,7 +252,9 @@ function consumeScene() {
 
 function updatePlay() {
   while (acc >= STEP_MS && scene === 'play') {
-    step(game, readIntent());
+    const ap = autoplay ? apIntent(game) : null;
+    if (autoplay && !ap) stopAutoplay();
+    step(game, ap || readIntent());
     acc -= STEP_MS;
     if (game.request) { handleRequest(game.request); break; }
     if (game.state === 'dead') { playSfx('lose'); scene = 'dead'; clearInput(); unlockPointer(); showScreen('dead', { time: fmtTime(game.ticks), level: game.player.level, rooms: game.cleared.length }); break; }
@@ -231,8 +263,26 @@ function updatePlay() {
   game.events.length = 0;
 }
 
+// autogra w scenach: dialog i walka dostaja klawisze od bota (co 6 klatek, unik w kazdej klatce)
+function autoplaySceneInput() {
+  if (!autoplay) return;
+  apTick++;
+  const press = a => { if (a && apTick % 6 === 0) sceneQueue.push(a); };
+  if (scene === 'dialogue') {
+    const goal = apGoal(game), prefer = dialogue.npc === 'Klatka schodowa' ? [apStairsOption(game, goal.floor)] : [];
+    press(apDialogueKey(dialogue, prefer));
+    return;
+  }
+  const b = enc.battle && enc.phase === 'battle' ? enc.battle : null;
+  sceneHeld = b && b.phase === 'dodge' ? apDodgeHeld(b) : {};
+  botSpeed = b && b.phase === 'dodge' ? 1 : 2;
+  if (enc.phase === 'intro' || enc.phase === 'outro') press(apDialogueKey(enc.dialogue));
+  else if (b) press(apBattleKey(b));
+}
+
 function updateDialogue() {
   while (acc >= STEP_MS && scene === 'dialogue') {
+    autoplaySceneInput();
     stepDialogue(dialogue, consumeScene());
     dialogue.events.forEach(playSceneSfx);
     acc -= STEP_MS;
@@ -247,6 +297,7 @@ function updateDialogue() {
 
 function updateEncounter() {
   while (acc >= STEP_MS && scene === 'encounter') {
+    autoplaySceneInput();
     stepEncounter(enc, sceneHeld, consumeScene());
     enc.events.forEach(playSceneSfx);
     acc -= STEP_MS;
@@ -273,6 +324,7 @@ function drawOverlays() {
 function frame(now) {
   const dt = Math.min(100, now - last);
   last = now; tick++;
+  if (autoplay && scene === 'dead') ui.onAction('retry');
   if (scene === 'menu') game.player.angle += 0.0015;
   else if (scene === 'play') { acc += dt * botSpeed; updatePlay(); }
   else if (scene === 'dialogue') { acc += dt * botSpeed; updateDialogue(); }

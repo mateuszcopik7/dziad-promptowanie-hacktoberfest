@@ -15,6 +15,14 @@ const NPC_DEFS = {
     idle: ['* Słucham?'], idleRepeat: [['* Jeśli to nie pilne,{p} wróć później.']] },
 };
 
+// przewodnik na starcie: stoi w holu przed graczem i uczy sterowania (scenka w main.js: startIntro)
+const GUIDE_NPC = {
+  id: 'przewodnik', floor: 0, x: 41.5, y: 50.5,
+  def: { name: 'Przewodnik', color: '#4ad6c9', voice: { pitch: 250 }, quests: [],
+    idle: ['* Zacznij od Woźnego Heńka.{p} Żółta strzałka u góry Cię poprowadzi.'], idleRepeat: [['* Pamiętaj: {c:yellow}E{/c} to rozmowa.']],
+    look: { head: 'short', body: 'coat', hair: '#2a2a30', skin: '#e8c0a0', bottom: '#2c3a4a', acc: '#4ad6c9', glasses: true, scale: 0.9 } },
+};
+
 // gadajace tla na pozostalych slotach (kolejnosc = kolejnosc slotow)
 const FLAVOR_NPCS = [
   { name: 'Uczennica z 1A', color: '#c25a9c', voice: { pitch: 320 }, idle: ['* Słyszałaś o bugach w holu?{p} Podobno gryzą.'] },

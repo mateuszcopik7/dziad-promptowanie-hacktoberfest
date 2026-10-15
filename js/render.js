@@ -240,8 +240,8 @@ function pill(str, x, y, color, size, align = 'center') {
 }
 
 function drawMinimap(g, objective) {
-  const big = showMap === 2, c = big ? 6 : 3, gw = g.grid[0].length * c, gh = g.grid.length * c, p = g.player;
-  const x0 = big ? Math.floor((W * SCALE - gw) / 2) : W * SCALE - gw - 10, y0 = big ? 100 : 112;
+  const big = showMap === 2, c = big ? 6 : 2, gw = g.grid[0].length * c, gh = g.grid.length * c, p = g.player;
+  const x0 = big ? Math.floor((W * SCALE - gw) / 2) : W * SCALE - gw - 8, y0 = big ? 100 : 26;
   sctx.fillStyle = big ? 'rgba(0,0,0,.82)' : 'rgba(0,0,0,.6)'; sctx.fillRect(x0 - 4, y0 - 4, gw + 8, gh + 8);
   g.grid.forEach((row, y) => row.forEach((v, x) => {
     if (!v) return;
@@ -263,14 +263,14 @@ function drawMinimap(g, objective) {
     const key = t.x + ',' + t.y;
     if (stairsSeen.has(key)) return;
     stairsSeen.add(key);
-    drawIcon(sctx, g.world.stairs.some(u => u.floor === g.floor && u.x === t.x && u.y === t.y && u.to[0] > g.floor) ? 'stairsUp' : 'stairsDown', x0 + t.x * c - (big ? 8 : 6), y0 + t.y * c - (big ? 8 : 6), big ? 1 : 0.75);
+    drawIcon(sctx, g.world.stairs.some(u => u.floor === g.floor && u.x === t.x && u.y === t.y && u.to[0] > g.floor) ? 'stairsUp' : 'stairsDown', x0 + t.x * c - (big ? 8 : 4), y0 + t.y * c - (big ? 8 : 4), big ? 1 : 0.5);
   });
   dot(p.x, p.y, '#4ad66d', big ? 3 : 2);
   sctx.strokeStyle = '#4ad66d'; sctx.lineWidth = 1; sctx.beginPath();
   sctx.moveTo(x0 + p.x * c, y0 + p.y * c);
   sctx.lineTo(x0 + (p.x + Math.cos(p.angle) * 3) * c, y0 + (p.y + Math.sin(p.angle) * 3) * c);
   sctx.stroke();
-  sctx.font = 'bold 14px monospace';
+  sctx.font = big ? 'bold 14px monospace' : 'bold 12px monospace';
   hudText(big ? 'MAPA: ' + g.world.floors[g.floor].name + '  (M: zmień rozmiar)' : g.world.floors[g.floor].name, x0, y0 - 8, '#ddd');
   if (big) {
     hudText('Ty', x0, y0 + gh + 18, '#4ad66d'); hudText('NPC', x0 + 40, y0 + gh + 18, '#7cc4ff');
@@ -288,16 +288,16 @@ function drawArrow(cx, cy, rel, size, color) {
 }
 
 function drawObjective(g, o) {
-  const bw = W * SCALE, pw = 640, ph = 84, px = (bw - pw) / 2, py = 10;
+  const bw = W * SCALE, pw = 400, ph = 60, px = (bw - pw) / 2, py = 8;
   sctx.fillStyle = 'rgba(6,8,16,.88)'; sctx.fillRect(px, py, pw, ph);
-  sctx.strokeStyle = '#ffe600'; sctx.lineWidth = 3; sctx.strokeRect(px, py, pw, ph);
-  sctx.font = 'bold 14px monospace'; hudText('CEL', px + 92, py + 20, '#ffe600');
-  const tw = pw - 104;
-  let size = 19, lines;
-  for (; size >= 14; size--) { sctx.font = `bold ${size}px monospace`; lines = wrapText(o.text, tw); if (lines.length <= 2) break; }
-  lines.slice(0, 2).forEach((l, i) => hudText(l, px + 92, py + 45 + i * 24, '#fff'));
-  if (o.dist > 1.8) { drawArrow(px + 44, py + 38, o.rel, 24, '#ffe600'); sctx.font = 'bold 16px monospace'; hudText(Math.round(o.dist) + ' m', px + 44, py + 76, '#ffe600', 'center'); }
-  else { sctx.font = 'bold 18px monospace'; hudText('TU', px + 44, py + 46, '#4ad66d', 'center'); }
+  sctx.strokeStyle = '#ffe600'; sctx.lineWidth = 2; sctx.strokeRect(px, py, pw, ph);
+  sctx.font = 'bold 11px monospace'; hudText('CEL', px + 64, py + 15, '#ffe600');
+  const tw = pw - 76;
+  let size = 15, lines;
+  for (; size >= 11; size--) { sctx.font = `bold ${size}px monospace`; lines = wrapText(o.text, tw); if (lines.length <= 2) break; }
+  lines.slice(0, 2).forEach((l, i) => hudText(l, px + 64, py + 34 + i * (size + 4), '#fff'));
+  if (o.dist > 1.8) { drawArrow(px + 30, py + 26, o.rel, 17, '#ffe600'); sctx.font = 'bold 12px monospace'; hudText(Math.round(o.dist) + ' m', px + 30, py + 54, '#ffe600', 'center'); }
+  else { sctx.font = 'bold 15px monospace'; hudText('TU', px + 30, py + 34, '#4ad66d', 'center'); }
 }
 
 // zawija tekst wg rzeczywistej szerokosci (monospace bold 15px)
@@ -313,7 +313,7 @@ function wrapText(str, maxW) {
 function drawQuestTracker(g) {
   const tr = trackedQuests(g.qs, QUEST_DEFS, g.npcDefs);
   if (!tr.length) return;
-  const y0 = 106, pw = 400, maxW = pw - 24;
+  const y0 = 80, pw = 400, maxW = pw - 24;
   sctx.font = 'bold 15px monospace';
   const rows = tr.map(t => ({ ok: t.ready, lines: wrapText((t.ready ? '[ok] ' : '[ ] ') + t.title + ': ' + t.text, maxW) }));
   const hgt = 40 + rows.reduce((n, r) => n + r.lines.length * 22 + 6, 0);
@@ -322,19 +322,6 @@ function drawQuestTracker(g) {
   sctx.font = 'bold 15px monospace';
   let y = y0 + 50;
   rows.forEach(r => r.lines.forEach((l, i) => { hudText(l, 20 + (i ? 16 : 0), y, r.ok ? '#4ad66d' : '#fff'); y += 22; }) || (y += 6));
-}
-
-function drawHints(g) {
-  if (g.ticks > 1800) return;
-  const a = Math.min(1, (1800 - g.ticks) / 300), y = H * SCALE - 160;
-  sctx.globalAlpha = a;
-  sctx.fillStyle = 'rgba(6,8,16,.82)'; sctx.fillRect(10, y - 34, 470, 120);
-  sctx.font = 'bold 16px monospace'; hudText('STEROWANIE', 20, y - 8, '#ffe600');
-  sctx.font = 'bold 15px monospace';
-  hudText('WASD: ruch     mysz / strzałki: rozglądanie', 20, y + 18, '#fff');
-  hudText('E: rozmowa     F: latarka     H: kanapka', 20, y + 42, '#fff');
-  hudText('M: mapa        Esc: pauza', 20, y + 66, '#fff');
-  sctx.globalAlpha = 1;
 }
 
 function drawHud(g) {
@@ -370,8 +357,8 @@ function drawHud(g) {
     sctx.globalAlpha = 1;
   }
   drawObjective(g, o);
+  if (autoplay) pill('BOT GRA  (Esc: przejmij sterowanie)', bw / 2, 90, '#ffe600', 13);
   drawQuestTracker(g);
-  drawHints(g);
   if (showMap) drawMinimap(g, o);
 }
 

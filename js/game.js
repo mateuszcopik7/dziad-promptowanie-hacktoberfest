@@ -48,6 +48,8 @@ function buildNpcs(world) {
 
 function createGame(world = WORLD) {
   const e = world.entrance, npcs = buildNpcs(world);
+  npcs.defs[GUIDE_NPC.id] = GUIDE_NPC.def;
+  npcs.list.push({ id: GUIDE_NPC.id, floor: GUIDE_NPC.floor, x: GUIDE_NPC.x, y: GUIDE_NPC.y });
   const g = {
     world, floor: e.floor, grid: null,
     player: { x: e.x + 0.5, y: e.y + 0.5, angle: -Math.PI / 2, hp: 60, maxHp: 60, level: 1, xp: 0, weapon: false, ammo: 0, flashlight: false },

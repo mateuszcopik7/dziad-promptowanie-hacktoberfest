@@ -27,6 +27,7 @@ const SCREENS = {
     <h1>GLIWICE RAID</h1>
     <p class="sub">Bugi opanowały ZSTI. Przejdź cały budynek.</p>
     <button data-a="play">Graj</button>
+    <button data-a="bot">Bot przechodzi grę</button>
     <button data-a="howto">Jak grać</button>
     <button data-a="settings">Ustawienia</button>
     <p class="foot">Hacktoberfest Hack Day Gliwice 2026</p>`,
