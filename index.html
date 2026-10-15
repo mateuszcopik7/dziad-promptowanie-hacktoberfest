@@ -12,7 +12,7 @@
 <script>
 // wymusza najnowszy build: gdy version.txt na serwerze jest nowszy niz ta strona (stara kopia z cache), przeladuj z ?v=nowa
 (() => {
-  const build = '20261015141916';
+  const build = '20261015141945';
   fetch('version.txt?t=' + Date.now(), { cache: 'no-store' }).then(r => (r.ok ? r.text() : '')).then(v => {
     v = v.trim();
     const url = new URL(location.href);
@@ -23,32 +23,32 @@
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
 <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Poppins:wght@700&display=swap">
-<link rel="stylesheet" href="style.css?v=20261015141916">
+<link rel="stylesheet" href="style.css?v=20261015141945">
 </head>
 <body>
 <div id="game">
   <canvas id="screen" width="960" height="600"></canvas>
   <div id="ui" hidden></div>
 </div>
-<script src="js/settings.js?v=20261015141916"></script>
-<script src="js/audio.js?v=20261015141916"></script>
-<script src="js/assets.js?v=20261015141916"></script>
-<script src="js/school-art.js?v=20261015141916"></script>
-<script src="js/icons.js?v=20261015141916"></script>
-<script src="js/weapon-art.js?v=20261015141916"></script>
-<script src="js/world-data.js?v=20261015141916"></script>
-<script src="js/world.js?v=20261015141916"></script>
-<script src="js/content.js?v=20261015141916"></script>
-<script src="js/quests.js?v=20261015141916"></script>
-<script src="js/dialogue.js?v=20261015141916"></script>
-<script src="js/battle.js?v=20261015141916"></script>
-<script src="js/encounter.js?v=20261015141916"></script>
-<script src="js/game.js?v=20261015141916"></script>
-<script src="js/autoplay.js?v=20261015141916"></script>
-<script src="js/guide.js?v=20261015141916"></script>
-<script src="js/scenes.js?v=20261015141916"></script>
-<script src="js/render.js?v=20261015141916"></script>
-<script src="js/ui.js?v=20261015141916"></script>
-<script src="js/main.js?v=20261015141916"></script>
+<script src="js/settings.js?v=20261015141945"></script>
+<script src="js/audio.js?v=20261015141945"></script>
+<script src="js/assets.js?v=20261015141945"></script>
+<script src="js/school-art.js?v=20261015141945"></script>
+<script src="js/icons.js?v=20261015141945"></script>
+<script src="js/weapon-art.js?v=20261015141945"></script>
+<script src="js/world-data.js?v=20261015141945"></script>
+<script src="js/world.js?v=20261015141945"></script>
+<script src="js/content.js?v=20261015141945"></script>
+<script src="js/quests.js?v=20261015141945"></script>
+<script src="js/dialogue.js?v=20261015141945"></script>
+<script src="js/battle.js?v=20261015141945"></script>
+<script src="js/encounter.js?v=20261015141945"></script>
+<script src="js/game.js?v=20261015141945"></script>
+<script src="js/autoplay.js?v=20261015141945"></script>
+<script src="js/guide.js?v=20261015141945"></script>
+<script src="js/scenes.js?v=20261015141945"></script>
+<script src="js/render.js?v=20261015141945"></script>
+<script src="js/ui.js?v=20261015141945"></script>
+<script src="js/main.js?v=20261015141945"></script>
 </body>
 </html>

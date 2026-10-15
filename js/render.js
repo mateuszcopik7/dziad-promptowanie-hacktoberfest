@@ -383,24 +383,23 @@ function wrapText(str, maxW) {
 function drawQuestTracker(g) {
   const tr = trackedQuests(g.qs, QUEST_DEFS, g.npcDefs);
   if (!tr.length) return;
-  const x0 = 10, y0 = 80, pw = 236, maxW = pw - 22;
+  const x0 = 8, y0 = 80, pw = 178, maxW = pw - 16;
   const rows = tr.map(t => {
-    sctx.font = 'bold 13px monospace'; const title = wrapText((t.ready ? '✓ ' : '• ') + t.title, maxW);
-    sctx.font = '12px monospace'; const text = wrapText(t.text, maxW - 10);
+    sctx.font = 'bold 11px monospace'; const title = wrapText((t.ready ? '✓ ' : '• ') + t.title, maxW);
+    sctx.font = '10px monospace'; const text = wrapText(t.text, maxW - 8);
     return { ok: t.ready, title, text };
   });
-  const hgt = 30 + rows.reduce((n, r) => n + r.title.length * 16 + r.text.length * 15 + 8, 0);
-  sctx.fillStyle = 'rgba(6,8,16,.78)'; sctx.fillRect(x0, y0, pw, hgt);
-  sctx.fillStyle = '#ffe600'; sctx.fillRect(x0, y0, 3, hgt);
-  sctx.strokeStyle = 'rgba(255,230,0,.3)'; sctx.lineWidth = 1; sctx.strokeRect(x0, y0, pw, hgt);
-  sctx.font = 'bold 13px monospace'; hudText('ZADANIA', x0 + 11, y0 + 18, '#ffe600');
-  let y = y0 + 36;
+  const hgt = 24 + rows.reduce((n, r) => n + r.title.length * 13 + r.text.length * 12 + 6, 0);
+  sctx.fillStyle = 'rgba(6,8,16,.72)'; sctx.fillRect(x0, y0, pw, hgt);
+  sctx.fillStyle = '#ffe600'; sctx.fillRect(x0, y0, 2, hgt);
+  sctx.font = 'bold 10px monospace'; hudText('ZADANIA', x0 + 8, y0 + 14, '#ffe600');
+  let y = y0 + 29;
   rows.forEach(r => {
-    sctx.font = 'bold 13px monospace';
-    r.title.forEach(l => { hudText(l, x0 + 11, y, r.ok ? '#4ad66d' : '#fff'); y += 16; });
-    sctx.font = '12px monospace';
-    r.text.forEach(l => { hudText(l, x0 + 21, y, r.ok ? '#4ad66d' : '#c8cfdd'); y += 15; });
-    y += 8;
+    sctx.font = 'bold 11px monospace';
+    r.title.forEach(l => { hudText(l, x0 + 8, y, r.ok ? '#4ad66d' : '#fff'); y += 13; });
+    sctx.font = '10px monospace';
+    r.text.forEach(l => { hudText(l, x0 + 16, y, r.ok ? '#4ad66d' : '#c8cfdd'); y += 12; });
+    y += 6;
   });
 }
 
