@@ -12,8 +12,10 @@ const buf = new Uint32Array(img.data.buffer);
 const zbuf = new Float32Array(W);
 let showMap = true;
 
-const AMBIENT_K = 0.2;              // im wiecej, tym szybciej robi sie ciemno z odlegloscia
-const FLASH_K = 0.05;               // ten sam wspolczynnik w stozku latarki
+// oswietlenie: jasna szkola, lekka mgla z odlegloscia, latarka podbija srodek ekranu
+const EXPOSURE = 0.97;
+const FLASH_EXPOSURE = 1.18;
+const FOG = 0.028;
 
 function cameraOf(p) {
   const k = Math.tan(settings.fov * Math.PI / 360), dx = Math.cos(p.angle), dy = Math.sin(p.angle);
@@ -25,26 +27,34 @@ function shade(c, sh) {
   return (255 << 24) | (b << 16) | (g << 8) | r;
 }
 
-// wspolczynnik zaciemnienia dla kolumny ekranu: latarka rozjasnia srodek
-function lightK(g, x) {
-  if (!g.player.flashlight) return AMBIENT_K;
-  const off = Math.min(1, Math.abs(2 * x / W - 1) * 1.6);
-  return FLASH_K + (AMBIENT_K - FLASH_K) * off * off;
+// ekspozycja dla kolumny ekranu
+function exposure(g, x) {
+  if (!g.player.flashlight) return EXPOSURE;
+  const off = Math.min(1, Math.abs(2 * x / W - 1) * 1.5);
+  return FLASH_EXPOSURE - (FLASH_EXPOSURE - EXPOSURE + 0.12) * off * off;
 }
 
-function renderFlat(g) {
-  const fl = g.player.flashlight;
-  for (let y = 0; y < H; y++) {
-    let c;
-    if (y < H / 2) {
-      const t = y / (H / 2);
-      c = rgb(clamp(16 + t * 26), clamp(20 + t * 26), clamp(34 + t * 28));
-    } else {
-      const d = 0.5 * H / (y - H / 2 + 1);
-      const sh = Math.min(256, 256 / (1 + d * (fl ? 0.12 : 0.28)));
-      c = shade(rgb(105, 100, 96), sh | 0);
+const lightAt = (g, x, dist) => Math.min(256, 256 * exposure(g, x) / (1 + dist * FOG)) | 0;
+
+// podloga i sufit z teksturami (casting po wierszach)
+const colExp = new Float32Array(W);
+function renderFloorCeil(g, cam) {
+  const p = g.player, f = g.world.floors[g.floor], mask = edgeMask(g.world, g.floor), mw = f.grid[0].length, mh = f.grid.length;
+  const rx0 = cam.dirX - cam.planeX, ry0 = cam.dirY - cam.planeY, rx1 = cam.dirX + cam.planeX, ry1 = cam.dirY + cam.planeY;
+  for (let x = 0; x < W; x++) colExp[x] = exposure(g, x);
+  for (let y = H / 2 + 1; y < H; y++) {
+    const rowDist = 0.5 * H / (y - H / 2), fog = 256 / (1 + rowDist * FOG);
+    const sx = rowDist * (rx1 - rx0) / W, sy = rowDist * (ry1 - ry0) / W;
+    let fx = p.x + rowDist * rx0, fy = p.y + rowDist * ry0;
+    const fi = y * W, ci = (H - 1 - y) * W;
+    for (let x = 0; x < W; x++, fx += sx, fy += sy) {
+      const cx = Math.floor(fx), cy = Math.floor(fy), u = fx - cx, v = fy - cy;
+      const sh = Math.min(256, fog * colExp[x]) | 0;
+      const inside = cx >= 0 && cy >= 0 && cx < mw && cy < mh;
+      buf[fi + x] = shade(inside ? floorColor(mask[cy * mw + cx], f.stairCells[cy][cx], u, v) : FLOOR_STRIPE, sh);
+      const c = ceilingColor(cx, cy, u, v);
+      buf[ci + x] = c === LED_COLOR ? c : shade(c, sh);
     }
-    buf.fill(c, y * W, (y + 1) * W);
   }
 }
 
@@ -73,7 +83,7 @@ function renderWalls(g, cam) {
     if ((side === 0 && rdx > 0) || (side === 1 && rdy < 0)) tx = 63 - tx;
     const tex = TEX[hit], step = 64 / lineH;
     let tp = (y0 - H / 2 + lineH / 2) * step;
-    const sh = Math.min(256, (256 / (1 + dist * lightK(g, x))) * (side ? 0.72 : 1)) | 0;
+    const sh = (lightAt(g, x, dist) * (side ? 0.8 : 1)) | 0;
     for (let y = y0; y <= y1; y++) {
       buf[y * W + x] = shade(tex[(tp & 63) * 64 + tx], sh);
       tp += step;
@@ -90,6 +100,11 @@ function spriteList(g) {
   g.npcs.filter(n => n.floor === g.floor).forEach(n => {
     const def = g.npcDefs[n.id];
     list.push({ x: n.x, y: n.y, spr: npcSprite(def.color), scale: 0.85, marker: npcMarker(g.qs, QUEST_DEFS, g.npcDefs, n.id) });
+  });
+  g.world.floors[g.floor].decor.forEach(d => {
+    if (d.kind === 'bench') list.push({ x: d.x, y: d.y, spr: SPRITES.bench, scale: 0.34 });
+    else if (d.kind === 'pufa') list.push({ x: d.x, y: d.y, spr: pufaSprite(d.color), scale: 0.26 });
+    else if (d.kind === 'plant') list.push({ x: d.x, y: d.y, spr: SPRITES.plant, scale: 0.55 });
   });
   const seen = new Set();
   g.world.stairs.filter(s => s.floor === g.floor).forEach(s => {
@@ -117,7 +132,7 @@ function renderSprites(g, cam) {
     const w = Math.floor(h * s.spr.w / s.spr.h);
     const floorY = Math.floor(H / 2 + H / ty / 2);
     const y0 = floorY - h, x0 = scrX - (w >> 1);
-    const sh = Math.min(256, 256 / (1 + ty * lightK(g, Math.max(0, Math.min(W - 1, scrX))))) | 0;
+    const sh = lightAt(g, Math.max(0, Math.min(W - 1, scrX)), ty);
     for (let x = Math.max(0, x0); x < Math.min(W, x0 + w); x++) {
       if (ty >= zbuf[x]) continue;
       const tcx = Math.floor((x - x0) * s.spr.w / w);
@@ -208,7 +223,7 @@ function drawHud(g) {
 
 function render(g, withHud) {
   const cam = cameraOf(g.player);
-  renderFlat(g); renderWalls(g, cam); renderSprites(g, cam);
+  renderFloorCeil(g, cam); renderWalls(g, cam); renderSprites(g, cam);
   lctx.putImageData(img, 0, 0);
   drawFirstPerson(g);
   sctx.drawImage(low, 0, 0, W * SCALE, H * SCALE);

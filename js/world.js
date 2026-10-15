@@ -9,7 +9,7 @@ function buildWorld(data) {
     const doors = {};
     f.doors.forEach(d => d.cells.forEach(([x, y]) => { doors[x + ',' + y] = d; }));
     return {
-      level: f.level, name: f.name, zones: f.zones, npcSlots: f.npcSlots, doors,
+      level: f.level, name: f.name, zones: f.zones, npcSlots: f.npcSlots, decor: f.decor || [], doors,
       grid: f.grid.map(row => [...row].map(ch => (CELL_TEX[ch] === undefined ? 1 : CELL_TEX[ch]))),
       stairCells: f.grid.map(row => [...row].map(ch => ch === 'S')),
       rooms: Object.fromEntries(f.zones.filter(z => z.type === 'room').map(z => [z.id, z])),
