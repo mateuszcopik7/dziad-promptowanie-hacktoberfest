@@ -207,7 +207,7 @@ function drawFirstPerson(g) {
     drawHands(lctx, W, H, bob, 0);
     lctx.restore();
   } else drawHands(lctx, W, H, bob, 0);
-  if (p.flashlight) drawFlashlight(lctx, W, H, true, bob);
+  if (p.flashlight) drawFlashlight(lctx, W, H, true, bob, p.weapon ? undefined : W / 2 + 53);   // bez broni: latarka dokladnie w miejscu prawej piesci
   if (p.weapon) { lctx.fillStyle = '#fff'; lctx.fillRect(W / 2 - 1, H / 2 - 4, 2, 8); lctx.fillRect(W / 2 - 4, H / 2 - 1, 8, 2); }
 }
 

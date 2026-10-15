@@ -168,9 +168,9 @@
     ctx.globalAlpha = 1;
   }
 
-  function drawFlashlight(ctx, W, H, on, bob) {
+  function drawFlashlight(ctx, W, H, on, bob, xPos) {
     ctx.save();
-    const x = Math.round(W - 49);
+    const x = Math.round(xPos === undefined ? W - 49 : xPos);        // xPos: gdzie trzymana, domyslnie prawa krawedz
     const bounce = clamp(Number(bob) || 0, -3, 3);
     const baseY = H + bounce;
     const lensY = baseY - 79;
