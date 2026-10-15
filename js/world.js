@@ -22,11 +22,6 @@ const WORLD = buildWorld(WORLD_DATA);
 
 const inRect = (z, x, y) => x >= z.x && y >= z.y && x < z.x + z.w && y < z.y + z.h;
 
-// strefa nie-salowa (korytarz, hol, klatka) w danym punkcie albo null
-function zoneAt(floor, x, y) {
-  return floor.zones.find(z => z.type !== 'room' && inRect(z, Math.floor(x), Math.floor(y))) || null;
-}
-
 // wejscia na schody dostepne z danej klatki (A lub B) na pietrze
 function stairsNear(world, floorIdx, x) {
   const letter = x < 42 ? 'A' : 'B';

@@ -18,9 +18,9 @@ from pathlib import Path
 DEFAULT_URL = (Path(__file__).resolve().parent.parent / "index.html").as_uri()
 TICK_S = 1 / 40
 GAME_SPEED = 3                                   # mnoznik tempa gry podczas chodzenia i dialogow
-LOW_HP = 25
+LOW_HP = 40
 TALK_RANGE = 1.5
-KEEP_DISTANCE = 2.2
+KEEP_DISTANCE = 3
 FIRE_RANGE = 9
 AIM_TOLERANCE = 0.06
 FACE_TOLERANCE = 0.12

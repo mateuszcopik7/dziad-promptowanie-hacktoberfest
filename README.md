@@ -88,6 +88,8 @@ Jak działa:
 - **Unik pocisków:** symuluje pociski 50 klatek do przodu i wybiera najbezpieczniejszy punkt.
 - `--speed` przyspiesza grę, unik idzie w normalnym tempie.
 
+Zakres bota: główna fabuła od tutorialu do wyjścia ze szkoły (bezpieczniki, ratowanie nauczycieli, aula, ucieczka). Zadań pobocznych i Protokołu 404 bot nie robi.
+
 ## Uruchomienie lokalne
 
 ```bash

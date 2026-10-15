@@ -4,8 +4,8 @@
 // Wymaga: game.js, guide.js, quests.js, content.js, world.js.
 
 const AP = {
-  TALK_RANGE: 1.5, KEEP_DISTANCE: 2.2, FIRE_RANGE: 9, AIM_TOL: 0.06, FACE_TOL: 0.12, MAX_TURN: 0.05, TURN_GAIN: 0.3,
-  NPC_CLEARANCE: 0.9, LOW_HP: 25, STUCK_TICKS: 40, FINAL_ZONE: 'f1-aula',
+  TALK_RANGE: 1.5, KEEP_DISTANCE: 3, FIRE_RANGE: 9, AIM_TOL: 0.06, FACE_TOL: 0.12, MAX_TURN: 0.05, TURN_GAIN: 0.3,
+  NPC_CLEARANCE: 0.9, LOW_HP: 40, STUCK_TICKS: 40, FINAL_ZONE: 'f1-aula',
   BOX_W: 240, BOX_H: 120, HEART_R: 5, HEART_SPEED: 2.2, HORIZON: 50, MARGIN: 3, MENU: ['fight', 'act', 'item', 'mercy'],
 };
 const apStuck = { pos: '', since: 0, force: 0 };            // force: do tego ticku idz po trasie BFS, nie prosto
