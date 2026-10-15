@@ -308,7 +308,7 @@ function pill(str, x, y, color, size, align = 'center') {
 
 function drawMinimap(g, objective) {
   const big = showMap === 2, c = big ? 6 : 2, gw = g.grid[0].length * c, gh = g.grid.length * c, p = g.player;
-  const x0 = big ? Math.floor((W * SCALE - gw) / 2) : W * SCALE - gw - 8, y0 = big ? 100 : 26;
+  const x0 = big ? Math.floor((HUD_W() - gw) / 2) : HUD_W() - gw - 8, y0 = big ? 100 : 26;
   sctx.fillStyle = big ? 'rgba(0,0,0,.82)' : 'rgba(0,0,0,.6)'; sctx.fillRect(x0 - 4, y0 - 4, gw + 8, gh + 8);
   g.grid.forEach((row, y) => row.forEach((v, x) => {
     if (!v) return;
@@ -355,7 +355,7 @@ function drawArrow(cx, cy, rel, size, color) {
 }
 
 function drawObjective(g, o) {
-  const bw = W * SCALE, pw = 400, ph = 60, px = (bw - pw) / 2, py = 8;
+  const bw = HUD_W(), pw = 400, ph = 60, px = (bw - pw) / 2, py = 8;
   sctx.fillStyle = 'rgba(6,8,16,.88)'; sctx.fillRect(px, py, pw, ph);
   sctx.fillStyle = '#4ad66d'; sctx.fillRect(px, py, 5, ph);
   sctx.strokeStyle = '#ffe600'; sctx.lineWidth = 2; sctx.strokeRect(px, py, pw, ph);
@@ -404,18 +404,28 @@ function drawQuestTracker(g) {
   });
 }
 
+// HUD rysowany w skali HUD_K: mniejszy, ale dalej przyklejony do krawedzi ekranu
+const HUD_K = 0.82;
+const HUD_W = () => W * SCALE / HUD_K, HUD_H = () => H * SCALE / HUD_K;
+
 function drawHud(g) {
-  const p = g.player, bw = W * SCALE, bar = 56, y = H * SCALE - bar, o = objectiveOf(g);
-  if (g.hurt > 0) { sctx.fillStyle = `rgba(200,0,0,${g.hurt / 20})`; sctx.fillRect(0, 0, bw, H * SCALE); }
+  if (g.hurt > 0) { sctx.fillStyle = `rgba(200,0,0,${g.hurt / 20})`; sctx.fillRect(0, 0, W * SCALE, H * SCALE); }
+  sctx.save(); sctx.scale(HUD_K, HUD_K);
+  drawHudScaled(g);
+  sctx.restore();
+}
+
+function drawHudScaled(g) {
+  const p = g.player, bw = HUD_W(), bar = 56, y = HUD_H() - bar, o = objectiveOf(g), k = SCALE / HUD_K;
   // etykiety w swiecie: drzwi, schody, imiona NPC (min. 15 px, rosna przy zblizaniu)
   for (const l of labels) {
-    const size = Math.max(15, Math.min(24, Math.round(34 - l.ty * 1.6))), sx = l.x * SCALE, sy = l.y * SCALE;
+    const size = Math.max(15, Math.min(24, Math.round(34 - l.ty * 1.6))), sx = l.x * k, sy = l.y * k;
     pill(l.text, sx, sy - size - 8, '#fff', size);
     pill(l.sub, sx, sy - 2, l.color, Math.max(14, size - 3));
   }
   for (const m of markers) {
-    if (m.name && m.ty < 6) pill(m.name, m.x * SCALE, m.y * SCALE - (m.ch ? 44 : 6), '#fff', 17);
-    if (m.ch) { sctx.font = 'bold 38px monospace'; hudText(m.ch, m.x * SCALE, m.y * SCALE - 4, m.ch === '?' ? '#4ad66d' : m.ch === '>' ? '#7cc4ff' : '#ffe600', 'center'); }
+    if (m.name && m.ty < 6) pill(m.name, m.x * k, m.y * k - (m.ch ? 44 : 6), '#fff', 17);
+    if (m.ch) { sctx.font = 'bold 38px monospace'; hudText(m.ch, m.x * k, m.y * k - 4, m.ch === '?' ? '#4ad66d' : m.ch === '>' ? '#7cc4ff' : '#ffe600', 'center'); }
   }
   // pasek statusu
   sctx.fillStyle = 'rgba(4,7,14,.9)'; sctx.fillRect(0, y, bw, bar);
