@@ -12,10 +12,13 @@ const buf = new Uint32Array(img.data.buffer);
 const zbuf = new Float32Array(W);
 let showMap = 1;                    // minimapa: 0 wylaczona, 1 mala, 2 duza (klawisz M)
 
-// oswietlenie: jasna szkola, lekka mgla z odlegloscia, latarka podbija srodek ekranu
-const EXPOSURE = 0.97;
-const FLASH_EXPOSURE = 1.18;
-const FOG = 0.028;
+// oswietlenie: ciemny budynek, krotki zasieg widzenia (wszystko ginie w ciemnosci), latarka swieci dalej i jasniej w srodku ekranu
+const EXPOSURE = 0.78;              // jasnosc bez latarki
+const FLASH_EXPOSURE = 1.12;        // jasnosc w srodku stozka latarki
+const NEAR = 2;                     // do tej odleglosci pelna jasnosc
+const FAR = 13;                     // bez latarki wszystko dalej niz to jest czarne
+const FAR_FLASH = 22;               // zasieg w stozku latarki
+const FOG = 0.03;
 
 function cameraOf(p) {
   const k = Math.tan(settings.fov * Math.PI / 360), dx = Math.cos(p.angle), dy = Math.sin(p.angle);
@@ -27,33 +30,41 @@ function shade(c, sh) {
   return (255 << 24) | (b << 16) | (g << 8) | r;
 }
 
-// ekspozycja dla kolumny ekranu
-function exposure(g, x) {
-  if (!g.player.flashlight) return EXPOSURE;
-  const off = Math.min(1, Math.abs(2 * x / W - 1) * 1.5);
-  return FLASH_EXPOSURE - (FLASH_EXPOSURE - EXPOSURE + 0.12) * off * off;
+// ekspozycja i zasieg dla kolumny ekranu: w srodku stozka latarki jasniej i dalej
+const colExp = new Float32Array(W), colFar = new Float32Array(W);
+function setupColumns(g) {
+  const fl = g.player.flashlight;
+  for (let x = 0; x < W; x++) {
+    const off = Math.min(1, Math.abs(2 * x / W - 1) * 1.5), t = fl ? 1 - off * off : 0;
+    colExp[x] = EXPOSURE + (FLASH_EXPOSURE - EXPOSURE) * t;
+    colFar[x] = FAR + (FAR_FLASH - FAR) * t;
+  }
 }
 
-const lightAt = (g, x, dist) => Math.min(256, 256 * exposure(g, x) / (1 + dist * FOG)) | 0;
+// jasnosc 0..256 dla kolumny x i odleglosci dist
+function lightCol(x, dist) {
+  const fade = Math.max(0, Math.min(1, (colFar[x] - dist) / (colFar[x] - NEAR)));
+  return Math.min(256, 256 * colExp[x] * fade / (1 + dist * FOG)) | 0;
+}
+const lightAt = (g, x, dist) => lightCol(Math.max(0, Math.min(W - 1, x | 0)), dist);
 
 // podloga i sufit z teksturami (casting po wierszach)
-const colExp = new Float32Array(W);
 function renderFloorCeil(g, cam) {
   const p = g.player, f = g.world.floors[g.floor], set = THEME_SETS[g.floor], mask = edgeMask(g.world, g.floor), mw = f.grid[0].length, mh = f.grid.length;
   const rx0 = cam.dirX - cam.planeX, ry0 = cam.dirY - cam.planeY, rx1 = cam.dirX + cam.planeX, ry1 = cam.dirY + cam.planeY;
-  for (let x = 0; x < W; x++) colExp[x] = exposure(g, x);
   for (let y = H / 2 + 1; y < H; y++) {
-    const rowDist = 0.5 * H / (y - H / 2), fog = 256 / (1 + rowDist * FOG);
+    const rowDist = 0.5 * H / (y - H / 2);
     const sx = rowDist * (rx1 - rx0) / W, sy = rowDist * (ry1 - ry0) / W;
     let fx = p.x + rowDist * rx0, fy = p.y + rowDist * ry0;
     const fi = y * W, ci = (H - 1 - y) * W;
     for (let x = 0; x < W; x++, fx += sx, fy += sy) {
+      const sh = lightCol(x, rowDist);
+      if (sh <= 0) { buf[fi + x] = 0xff000000; buf[ci + x] = 0xff000000; continue; }
       const cx = Math.floor(fx), cy = Math.floor(fy), u = fx - cx, v = fy - cy;
-      const sh = Math.min(256, fog * colExp[x]) | 0;
       const inside = cx >= 0 && cy >= 0 && cx < mw && cy < mh;
       buf[fi + x] = shade(inside ? floorColor(set, mask[cy * mw + cx], f.stairCells[cy][cx], u, v) : set.stripe, sh);
       const c = ceilingColor(set, cx, cy, u, v);
-      buf[ci + x] = c === LED_COLOR ? c : shade(c, sh);
+      buf[ci + x] = c === LED_COLOR ? shade(c, Math.min(256, sh * 2)) : shade(c, sh);        // panele LED swieca mocniej niz sufit
     }
   }
 }
@@ -191,7 +202,11 @@ function collectLabels(g, cam) {
 function drawFirstPerson(g) {
   const p = g.player, bob = g.moving ? Math.sin(g.walk * 0.22) * 2.5 : 0;
   if (p.weapon) drawPistol(lctx, W, H, g.flash > 0 ? 4 : 0, g.flash, bob);
-  else drawHands(lctx, W, H, bob, 0);
+  else if (p.flashlight) {                              // latarka w prawej rece: rysujemy tylko lewa piesc
+    lctx.save(); lctx.beginPath(); lctx.rect(0, 0, W * 0.5, H); lctx.clip();
+    drawHands(lctx, W, H, bob, 0);
+    lctx.restore();
+  } else drawHands(lctx, W, H, bob, 0);
   if (p.flashlight) drawFlashlight(lctx, W, H, true, bob);
   if (p.weapon) { lctx.fillStyle = '#fff'; lctx.fillRect(W / 2 - 1, H / 2 - 4, 2, 8); lctx.fillRect(W / 2 - 4, H / 2 - 1, 8, 2); }
 }
@@ -347,7 +362,7 @@ function drawVignette() {
 
 function render(g, withHud) {
   const cam = cameraOf(g.player);
-  renderFloorCeil(g, cam); renderWalls(g, cam); renderSprites(g, cam);
+  setupColumns(g); renderFloorCeil(g, cam); renderWalls(g, cam); renderSprites(g, cam);
   collectLabels(g, cam);
   lctx.putImageData(img, 0, 0);
   drawFirstPerson(g);
