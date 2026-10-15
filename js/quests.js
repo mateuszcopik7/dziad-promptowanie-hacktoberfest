@@ -9,7 +9,18 @@
 // Kazdy quest oddaje sie u zleceniodawcy (giver). Nagroda: reward { xp, unlock: [idDrzwi] }.
 
 function createQuestState() {
-  return { quests: {}, unlocked: [], items: [] };      // quests[id] = { status, progress }
+  return { quests: {}, unlocked: [], items: [], talks: {} };      // quests[id] = { status, progress }
+}
+
+// licznik rozmow z NPC: kolejne wizyty moga miec inne kwestie (npc.idleRepeat)
+function noteTalk(qs, npcId) {
+  qs.talks = qs.talks || {};
+  qs.talks[npcId] = (qs.talks[npcId] || 0) + 1;
+}
+
+function idleLines(qs, npc, npcId) {
+  const talks = (qs.talks && qs.talks[npcId]) || 0, repeat = npc.idleRepeat || [];
+  return talks > 0 && repeat.length ? repeat[Math.min(talks - 1, repeat.length - 1)] : npc.idle;
 }
 
 const questGoal = def => (def.type === 'kill' ? def.count : 1);
@@ -70,7 +81,7 @@ function dialogFor(qs, defs, npcs, npcId) {
   }
   const active = npcQuest(qs, defs, npc, 'active');
   if (active) return { npc: npc.name, kind: 'active', quest: active, lines: defs[active].activeLines, options: [close] };
-  return { npc: npc.name, kind: 'idle', quest: null, lines: npc.idle, options: [close] };
+  return { npc: npc.name, kind: 'idle', quest: null, lines: idleLines(qs, npc, npcId), options: [close] };
 }
 
 // wybor gracza w dialogu; zwraca efekty do zastosowania w grze

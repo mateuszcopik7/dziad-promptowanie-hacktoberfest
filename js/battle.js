@@ -30,7 +30,7 @@ function mulberry32(seed) {
 function createBattle(def, player, items, seed = 1) {
   return {
     def, rng: mulberry32(seed), phase: 'text', next: 'menu', text: def.intro, menu: 'main', cursor: 0,
-    hp: player.hp, maxHp: player.maxHp, atk: 4 + 2 * player.level,
+    hp: player.hp, maxHp: player.maxHp, level: player.level, atk: 4 + 2 * player.level,
     enemyHp: def.hp, mercy: 0, turn: 0, tick: 0, dodgeTick: 0,
     items: items.map(i => ({ ...i })), heart: { x: BOX.w / 2, y: BOX.h / 2 }, bullets: [], invuln: 0,
     bar: { pos: 0, hit: 0 }, outcome: null, pending: null, events: [],

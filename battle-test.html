@@ -1,0 +1,195 @@
+<!doctype html>
+<html lang="pl">
+<head>
+<meta charset="utf-8">
+<title>Test walki (placeholder)</title>
+<style>
+  html, body { margin: 0; height: 100%; background: #000; color: #fff; font-family: monospace; }
+  body { display: flex; flex-direction: column; align-items: center; justify-content: center; gap: 8px; }
+  canvas { height: min(86vh, 72vw); aspect-ratio: 4 / 3; image-rendering: pixelated; background: #000; }
+  p { margin: 0; padding: 0 12px; font-size: 12px; color: #aaa; text-align: center; }
+</style>
+</head>
+<body>
+<canvas id="c" width="640" height="480"></canvas>
+<p>Strzałki / WASD: ruch i wybór | Z / Enter: potwierdź | X / Esc: wstecz | Test placeholderów silnika walki</p>
+<script src="js/battle.js"></script>
+<script>
+const cv = document.getElementById('c'), g = cv.getContext('2d');
+const S = 2, BX = 80, BY = 150;                  // skala i pozycja pudelka na ekranie
+
+const BOSS = {
+  name: 'Woźny', hp: 40, xp: 80, intro: '* Woźny blokuje korytarz mopem.',
+  check: '* WOŹNY. Lubi ciszę i czysty parkiet.',
+  killText: '* Woźny pada na ziemię.', spareText: '* Woźny odkłada mop. Walka skończona.',
+  flavor: ['* Woźny wyciera podłogę.', '* Czuć środek do mycia.', '* Woźny mruczy o bałaganie.'],
+  acts: [
+    { id: 'check', label: 'Sprawdź', mercy: 0 },
+    { id: 'help', label: 'Pomóż sprzątać', mercy: 35, text: '* Zamiatasz razem z Woźnym. Jest mu miło.' },
+    { id: 'talk', label: 'Pogadaj', mercy: 25, text: '* Pytasz o rodzinę. Woźny się rozkleja.' },
+    { id: 'insult', label: 'Zwyzywaj', mercy: -20, text: '* Woźny jest urażony.' },
+  ],
+  patterns: [
+    { type: 'rain', rate: 7, speed: 1.5, dmg: 5 },
+    { type: 'side', rate: 22, speed: 2.1, dmg: 6 },
+    { type: 'wall', rate: 70, speed: 1.3, dmg: 8 },
+  ],
+};
+const PLAYER = { hp: 40, maxHp: 40, level: 2 };
+const ITEMS = [{ id: 'food', name: 'Kanapka', heal: 25, count: 2 }];
+
+let b, held = {}, queue = [];
+const start = () => { b = createBattle(BOSS, PLAYER, ITEMS, (Math.random() * 1e9) | 0); queue = []; };
+start();
+
+const KEYS = {
+  ArrowLeft: 'left', KeyA: 'left', ArrowRight: 'right', KeyD: 'right', ArrowUp: 'up', KeyW: 'up', ArrowDown: 'down', KeyS: 'down',
+  KeyZ: 'confirm', Enter: 'confirm', KeyX: 'cancel', Escape: 'cancel',
+};
+addEventListener('keydown', e => {
+  const k = KEYS[e.code];
+  if (!k) return;
+  e.preventDefault();
+  if (!e.repeat) queue.push(k);
+  held[k] = true;
+});
+addEventListener('keyup', e => { const k = KEYS[e.code]; if (k) held[k] = false; });
+
+function frameStep() {
+  const pressed = {};
+  for (const k of queue) pressed[k] = true;
+  queue = [];
+  if (b.phase === 'end') { if (pressed.confirm) start(); return; }
+  stepBattle(b, held, pressed);
+}
+
+// --- render ---------------------------------------------------------------
+const WHITE = '#fff', ORANGE = '#ff9a1f', YELLOW = '#ffe600', RED = '#ff2a2a';
+
+function typed(text, x, y, maxW) {
+  const words = text.split(' '), lines = [];
+  let line = '';
+  for (const w of words) {
+    if (g.measureText(line + w).width > maxW) { lines.push(line); line = ''; }
+    line += w + ' ';
+  }
+  lines.push(line);
+  const shown = Math.floor(b.tick / 1.5);                // maszynka do pisania
+  let left = shown;
+  lines.forEach((l, i) => { g.fillText(l.slice(0, Math.max(0, left)), x, y + i * 26); left -= l.length; });
+}
+
+function drawBoss() {
+  const shake = b.bar.hit && b.phase === 'text' && b.next === 'dodge' ? Math.sin(b.tick * 1.2) * 6 : 0;
+  g.save(); g.translate(320 + shake, 80);
+  g.fillStyle = '#7a4bd1'; g.fillRect(-45, -40, 90, 100);              // placeholder: korpus
+  g.fillStyle = '#b79aff'; g.fillRect(-35, -70, 70, 40);                // glowa
+  g.fillStyle = '#000'; g.fillRect(-22, -58, 12, 12); g.fillRect(10, -58, 12, 12);
+  g.fillRect(-14, -38, 28, 5);
+  g.fillStyle = '#8b5a2b'; g.fillRect(55, -60, 6, 120);                 // mop
+  g.fillStyle = '#ddd'; g.fillRect(46, 55, 24, 16);
+  g.restore();
+  g.font = '16px monospace'; g.textAlign = 'center'; g.fillStyle = WHITE;
+  g.fillText(BOSS.name, 320, 148 - 24 + 20);
+  if (b.bar.hit > 0 && b.phase === 'text') {                            // pasek HP po trafieniu
+    g.fillStyle = '#333'; g.fillRect(250, 20, 140, 12);
+    g.fillStyle = '#2bd62b'; g.fillRect(250, 20, 140 * b.enemyHp / BOSS.hp, 12);
+    g.fillStyle = RED; g.font = 'bold 22px monospace'; g.fillText('-' + b.bar.hit, 320, 14);
+  }
+  g.textAlign = 'left';
+}
+
+function drawBox() {
+  g.strokeStyle = WHITE; g.lineWidth = 4;
+  g.strokeRect(BX - 2, BY - 2, BOX.w * S + 4, BOX.h * S + 4);
+}
+
+function heart(x, y, color) {
+  g.fillStyle = color;
+  g.fillRect(x - 6, y - 6, 5, 5); g.fillRect(x + 1, y - 6, 5, 5);
+  g.fillRect(x - 7, y - 3, 14, 5); g.fillRect(x - 5, y + 2, 10, 3); g.fillRect(x - 2, y + 5, 4, 3);
+}
+
+function drawDodge() {
+  g.fillStyle = WHITE;
+  for (const k of b.bullets) { g.beginPath(); g.arc(BX + k.x * S, BY + k.y * S, k.r * S, 0, 7); g.fill(); }
+  const blink = b.invuln > 0 && Math.floor(b.invuln / 4) % 2 === 0;
+  heart(BX + b.heart.x * S, BY + b.heart.y * S, blink ? '#ffb3b3' : RED);
+  g.fillStyle = '#555'; g.fillRect(BX, BY + BOX.h * S + 8, BOX.w * S * (1 - b.dodgeTick / (BOSS.turnTicks || TURN_TICKS)), 4);
+}
+
+function drawBar() {
+  g.fillStyle = '#222'; g.fillRect(BX + 20, BY + 70, BOX.w * S - 40, 100);
+  g.strokeStyle = WHITE; g.strokeRect(BX + 20, BY + 70, BOX.w * S - 40, 100);
+  g.fillStyle = '#2bd62b'; g.fillRect(BX + BOX.w * S / 2 - 6, BY + 70, 12, 100);   // srodek = max obrazen
+  const x = BX + 20 + (BOX.w * S - 40) * b.bar.pos;
+  g.fillStyle = WHITE; g.fillRect(x - 4, BY + 62, 8, 116);
+}
+
+function drawMenuText() {
+  g.font = '22px monospace';
+  if (b.phase === 'text') { g.fillStyle = WHITE; typed(b.text, BX + 20, BY + 40, BOX.w * S - 40); return; }
+  if (b.phase === 'menu' && b.menu !== 'main') {
+    const list = listFor(b);
+    list.forEach((it, i) => {
+      g.fillStyle = i === b.cursor ? YELLOW : WHITE;
+      g.fillText((i === b.cursor ? '♥ ' : '  ') + (it.label || (it.name + ' x' + it.count)), BX + 30, BY + 40 + i * 32);
+    });
+    if (b.menu === 'act') { g.fillStyle = '#888'; g.font = '14px monospace'; g.fillText('Nastrój bossa: ' + b.mercy + '/100', BX + 30, BY + 220); }
+  } else if (b.phase === 'menu') {
+    g.fillStyle = WHITE; typed(BOSS.flavor[b.turn % BOSS.flavor.length], BX + 20, BY + 40, BOX.w * S - 40);
+  }
+}
+
+function drawButtons() {
+  const labels = ['FIGHT', 'ACT', 'ITEM', 'MERCY'];
+  labels.forEach((l, i) => {
+    const x = 20 + i * 150, sel = b.phase === 'menu' && b.menu === 'main' && b.cursor === i;
+    g.strokeStyle = sel ? YELLOW : ORANGE; g.lineWidth = 3; g.strokeRect(x, 420, 130, 40);
+    g.fillStyle = sel ? YELLOW : ORANGE; g.font = 'bold 20px monospace'; g.textAlign = 'center';
+    g.fillText(l, x + 65, 447); g.textAlign = 'left';
+    if (sel) heart(x + 16, 440, RED);
+  });
+}
+
+function drawStats() {
+  g.font = 'bold 16px monospace'; g.fillStyle = WHITE;
+  g.fillText('GRACZ  LV ' + PLAYER.level, 20, 408);
+  g.fillText('HP', 260, 408);
+  g.fillStyle = RED; g.fillRect(290, 394, 80, 16);
+  g.fillStyle = YELLOW; g.fillRect(290, 394, 80 * b.hp / b.maxHp, 16);
+  g.fillStyle = WHITE; g.fillText(b.hp + ' / ' + b.maxHp, 380, 408);
+  g.fillStyle = '#888'; g.font = '13px monospace';
+  g.fillText('NASTRÓJ ' + b.mercy + '/100', 480, 408);
+}
+
+function drawEnd() {
+  g.fillStyle = 'rgba(0,0,0,.8)'; g.fillRect(0, 0, 640, 480);
+  const r = battleResult(b), title = { killed: 'ZWYCIĘSTWO (zabity)', spared: 'ZWYCIĘSTWO (oszczędzony)', lost: 'PRZEGRANA' }[r.outcome];
+  g.textAlign = 'center'; g.fillStyle = r.outcome === 'lost' ? RED : YELLOW; g.font = 'bold 34px monospace';
+  g.fillText(title, 320, 210);
+  g.fillStyle = WHITE; g.font = '20px monospace';
+  g.fillText('XP: ' + r.xp + '   HP: ' + r.hp, 320, 255);
+  g.fillText('Z: jeszcze raz', 320, 300); g.textAlign = 'left';
+}
+
+function render() {
+  g.clearRect(0, 0, 640, 480);
+  drawBoss(); drawBox();
+  if (b.phase === 'dodge') drawDodge(); else if (b.phase === 'bar') drawBar(); else drawMenuText();
+  drawStats(); drawButtons();
+  if (b.phase === 'end') drawEnd();
+  window.__battle = { phase: b.phase, menu: b.menu, hp: b.hp, mercy: b.mercy, enemyHp: b.enemyHp, outcome: b.outcome };
+}
+
+let last = performance.now(), acc = 0;
+function loop(now) {
+  acc += Math.min(100, now - last); last = now;
+  while (acc >= 1000 / 60) { frameStep(); acc -= 1000 / 60; }
+  render();
+  requestAnimationFrame(loop);
+}
+requestAnimationFrame(loop);
+</script>
+</body>
+</html>

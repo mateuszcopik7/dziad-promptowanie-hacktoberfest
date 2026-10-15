@@ -4,7 +4,7 @@ const fs = require('fs'), path = require('path'), vm = require('vm'), assert = r
 const ctx = vm.createContext({});
 const src = fs.readFileSync(path.join(__dirname, '../js/quests.js'), 'utf8');
 vm.runInContext(src + `\nthis.api = { createQuestState, questStatus, onQuestKill, onQuestItem, dialogFor, chooseDialog,
-  isUnlocked, npcMarker, trackedQuests };`, ctx);
+  isUnlocked, npcMarker, trackedQuests, noteTalk };`, ctx);
 const api = ctx.api;
 let passed = 0;
 const test = (name, fn) => { fn(); passed++; console.log('ok  ' + name); };
@@ -125,6 +125,16 @@ test('tracker pokazuje postep i powrot do zleceniodawcy', () => {
   const t = api.trackedQuests(qs, DEFS, NPCS)[0];
   assert(t.ready);
   assert.strictEqual(t.text, 'Wróć do: Woźny');
+});
+
+test('kolejne wizyty u NPC maja inne kwestie (idleRepeat)', () => {
+  const npcs = { ...NPCS, woznica: { ...NPCS.woznica, quests: [], idleRepeat: [['Znowu Ty?'], ['Idź już.']] } };
+  const qs = api.createQuestState();
+  eq(api.dialogFor(qs, DEFS, npcs, 'woznica').lines, ['Pusto dzisiaj.']);
+  api.noteTalk(qs, 'woznica');
+  eq(api.dialogFor(qs, DEFS, npcs, 'woznica').lines, ['Znowu Ty?']);
+  api.noteTalk(qs, 'woznica'); api.noteTalk(qs, 'woznica'); api.noteTalk(qs, 'woznica');
+  eq(api.dialogFor(qs, DEFS, npcs, 'woznica').lines, ['Idź już.']);
 });
 
 console.log(`\n${passed} testow przeszlo`);

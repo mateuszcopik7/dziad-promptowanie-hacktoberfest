@@ -1,0 +1,202 @@
+<!doctype html>
+<html lang="pl">
+<head>
+<meta charset="utf-8">
+<title>Test rozmów z NPC (placeholder)</title>
+<style>
+  html, body { margin: 0; height: 100%; background: #000; color: #fff; font-family: monospace; }
+  body { display: flex; flex-direction: column; align-items: center; justify-content: center; gap: 8px; }
+  canvas { height: min(84vh, 72vw); aspect-ratio: 4 / 3; image-rendering: pixelated; background: #000; }
+  p { margin: 0; padding: 0 12px; font-size: 12px; color: #aaa; text-align: center; }
+</style>
+</head>
+<body>
+<canvas id="c" width="640" height="480"></canvas>
+<p>Strzałki: wybór NPC / opcji | Z, Enter: rozmawiaj, dalej | X: pomiń pisanie | K: zabij buga w pracowni | I: podnieś książkę | R: reset</p>
+<script src="js/quests.js"></script>
+<script src="js/dialogue.js"></script>
+<script>
+const cv = document.getElementById('c'), g = cv.getContext('2d');
+
+// --- dane testowe: NPC i questy (placeholdery, docelowo w osobnym pliku danych) ---
+const NPCS = {
+  woznica: { name: 'Woźny', color: '#7a4bd1', voice: { pitch: 140 }, quests: ['sprzatanie'],
+    idle: [{ text: '* Cisza na korytarzu. {p}Lubię to.', face: 'smile' }],
+    idleRepeat: [['* Znowu Ty?', '* {s:0.2}Idź już...{/s} {p}mam co robić.'], ['* Pytaj, o co chcesz.{p} Ale nie wiem nic.']] },
+  bibliotekarka: { name: 'Bibliotekarka', color: '#d1684b', voice: { pitch: 380 }, quests: ['ksiazka'],
+    idle: [{ text: '* Ciii. {p}To biblioteka... {p}no, prawie.', face: 'smile' }], idleRepeat: [['* {shake}Ciii!{/shake}']] },
+  uczen: { name: 'Uczeń z 3B', color: '#4bb0d1', voice: { pitch: 260 }, quests: ['wiadomosc'],
+    idle: ['* Nie mam czasu, {p}kartkówka!'], idleRepeat: [['* Jeszcze tu jesteś?']] },
+  dyrektor: { name: 'Pani Dyrektor', color: '#4bd183', voice: { pitch: 200 }, quests: ['klucz-do-auli'],
+    idle: ['* Słucham?'], idleRepeat: [['* Jeśli to nie pilne,{p} wróć później.']] },
+};
+const DEFS = {
+  sprzatanie: { id: 'sprzatanie', title: 'Sprzątanie w pracowni', type: 'kill', giver: 'woznica', zone: 'pracownia', zoneName: 'Pracownia', count: 3,
+    offerLines: [{ text: '* Słuchaj, {p}mamy {c:red}problem{/c}.', face: 'sad' }, '* W pracowni {shake}lęgną się bugi{/shake}.{p} Wszędzie kable i robaki.', { text: '* Pomożesz mi?', face: 'smile' }],
+    activeLines: ['* Jeszcze nie skończyłeś w pracowni.'], doneLines: [{ text: '* Czysto! {p}Dzięki, szkoła Ci dziękuje.', face: 'smile' }, '* Otworzę Ci {c:yellow}bibliotekę{/c}.'],
+    reward: { xp: 50, unlock: ['drzwi-biblioteki'] } },
+  ksiazka: { id: 'ksiazka', title: 'Zaginiona książka', type: 'fetch', giver: 'bibliotekarka', item: 'ksiazka', itemName: 'Książka', requires: ['sprzatanie'],
+    offerLines: ['* Zgubiłam {c:yellow}książkę{/c}.{p} Ktoś ją schował.', '* Znajdź ją, {p}proszę.'], activeLines: ['* Szukaj dalej.'],
+    doneLines: ['* Jest! {p}Wiedziałam, że się uda.'], reward: { xp: 30 } },
+  wiadomosc: { id: 'wiadomosc', title: 'Liścik', type: 'talk', giver: 'uczen', to: 'dyrektor',
+    offerLines: ['* Zaniesiesz ten liścik {p}do Pani Dyrektor?', '* Ja się {shake}boję{/shake}.'], deliverLines: ['* Ach, {p}od ucznia. Dziękuję.'],
+    deliverLabel: 'Podaj liścik', activeLines: ['* Poszło?'], doneLines: ['* Super! {p}Jesteś wielki.'], reward: { xp: 20 } },
+  'klucz-do-auli': { id: 'klucz-do-auli', title: 'Klucz do auli', type: 'kill', giver: 'dyrektor', zone: 'aula', zoneName: 'Aula', count: 1, requires: ['sprzatanie', 'ksiazka'],
+    offerLines: ['* Aula czeka. {p}Pokonaj tam bossa.'], activeLines: ['* Aula.'], doneLines: ['* Brawo.'], reward: { xp: 100, unlock: ['drzwi-auli'] } },
+};
+
+// --- stan ---------------------------------------------------------------------
+let qs, xp, log, sel, dlg, npcId, held = {}, queue = [], tick = 0;
+function reset() { qs = createQuestState(); xp = 0; log = ['Podejdź do NPC (strzałki) i naciśnij Z.']; sel = 0; dlg = null; npcId = null; }
+reset();
+const ids = Object.keys(NPCS);
+
+function apply(effects) {
+  for (const e of effects) {
+    if (e.type === 'xp') { xp += e.amount; log.unshift('+' + e.amount + ' XP'); }
+    else if (e.type === 'unlock') log.unshift('Odblokowano: ' + e.id);
+    else if (e.type === 'accepted') log.unshift('Quest: ' + DEFS[e.quest].title);
+    else if (e.type === 'ready') log.unshift('Cel wykonany: ' + DEFS[e.quest].title);
+    else if (e.type === 'done') log.unshift('Quest ukończony: ' + DEFS[e.quest].title);
+  }
+  log = log.slice(0, 5);
+}
+
+function talk(id) {
+  const node = dialogFor(qs, DEFS, NPCS, id);
+  noteTalk(qs, id);
+  dlg = createDialogue({ ...node, voice: NPCS[id].voice });
+  npcId = id;
+}
+
+// --- dzwiek: blipy jak w Undertale ---------------------------------------------
+let actx = null;
+function blip(pitch, dur = 0.045, vol = 0.07) {
+  try {
+    actx = actx || new (window.AudioContext || window.webkitAudioContext)();
+    const o = actx.createOscillator(), v = actx.createGain(), t = actx.currentTime;
+    o.type = 'square'; o.frequency.value = pitch * (0.92 + Math.random() * 0.16);
+    v.gain.setValueAtTime(vol, t); v.gain.exponentialRampToValueAtTime(0.001, t + dur);
+    o.connect(v); v.connect(actx.destination); o.start(t); o.stop(t + dur);
+  } catch (_) {}
+}
+
+// --- wejscie --------------------------------------------------------------------
+const KEYS = { ArrowLeft: 'left', ArrowRight: 'right', ArrowUp: 'up', ArrowDown: 'down', KeyA: 'left', KeyD: 'right', KeyW: 'up', KeyS: 'down',
+  KeyZ: 'confirm', Enter: 'confirm', KeyX: 'cancel', Escape: 'cancel', KeyK: 'kill', KeyI: 'item', KeyR: 'reset' };
+addEventListener('keydown', e => { const k = KEYS[e.code]; if (!k) return; e.preventDefault(); if (!e.repeat) queue.push(k); });
+
+function frameStep() {
+  const pressed = {};
+  for (const k of queue) pressed[k] = true;
+  queue = []; tick++;
+  if (pressed.reset) return reset();
+  if (!dlg) {
+    if (pressed.left) sel = (sel + ids.length - 1) % ids.length;
+    if (pressed.right) sel = (sel + 1) % ids.length;
+    if (pressed.confirm) talk(ids[sel]);
+    if (pressed.kill) apply(onQuestKill(qs, DEFS, 'pracownia').map(e => e).concat([]));
+    if (pressed.item) apply(onQuestItem(qs, DEFS, 'ksiazka'));
+    return;
+  }
+  stepDialogue(dlg, pressed);
+  for (const e of dlg.events) if (e.type === 'blip') blip(e.pitch); else if (e.type === 'move') blip(520, 0.03); else if (e.type === 'select') blip(780, 0.06);
+  if (dialogueDone(dlg)) {
+    apply(chooseDialog(qs, DEFS, NPCS, npcId, dlg.result));
+    dlg = null;
+  }
+}
+
+// --- render ---------------------------------------------------------------------
+const FACE = { smile: ['#000', 'smile'], sad: ['#456', 'sad'], angry: ['#c22', 'angry'] };
+
+function drawNpc(id, i) {
+  const x = 90 + i * 150, y = 190, n = NPCS[id], mark = npcMarker(qs, DEFS, NPCS, id), bob = Math.sin((tick + i * 20) / 18) * 2;
+  g.fillStyle = n.color; g.fillRect(x - 24, y - 50 + bob, 48, 70);
+  g.fillStyle = '#fff'; g.fillRect(x - 14, y - 40 + bob, 8, 8); g.fillRect(x + 6, y - 40 + bob, 8, 8);
+  g.fillStyle = '#000'; g.fillRect(x - 12, y - 38 + bob, 4, 4); g.fillRect(x + 8, y - 38 + bob, 4, 4);
+  g.fillStyle = '#fff'; g.font = '13px monospace'; g.textAlign = 'center'; g.fillText(n.name, x, y + 40);
+  if (mark) { g.fillStyle = mark === '?' ? '#4ad66d' : '#ffe600'; g.font = 'bold 28px monospace'; g.fillText(mark, x, y - 62 + bob); }
+  if (!dlg && sel === i) { g.fillStyle = '#ff2a2a'; g.fillRect(x - 6, y + 52, 12, 10); g.fillText('Z: rozmawiaj', x, y + 80); }
+  g.textAlign = 'left';
+}
+
+function drawHud() {
+  g.fillStyle = '#fff'; g.font = 'bold 14px monospace'; g.fillText('XP: ' + xp, 16, 24);
+  g.fillStyle = '#aaa'; g.font = '12px monospace';
+  g.fillText('Odblokowane: ' + (qs.unlocked.join(', ') || 'nic'), 16, 44);
+  g.fillText('Przedmioty: ' + (qs.items.join(', ') || 'brak'), 16, 62);
+  const tr = trackedQuests(qs, DEFS, NPCS);
+  g.fillStyle = '#ffe600'; g.font = 'bold 13px monospace'; g.fillText(tr.length ? 'ZADANIA' : '', 420, 24);
+  tr.forEach((t, i) => { g.fillStyle = t.ready ? '#4ad66d' : '#fff'; g.font = '12px monospace'; g.fillText(t.title + ': ' + t.text, 420, 44 + i * 18); });
+  g.fillStyle = '#888'; g.font = '12px monospace';
+  log.forEach((l, i) => g.fillText('> ' + l, 16, 300 + i * 16));
+}
+
+function wrapChars(chars, maxW) {                       // zawijanie na pelnym tekscie strony, zeby slowa nie skakaly
+  g.font = '22px monospace';
+  const lines = [[]]; let w = 0, word = [];
+  const flush = () => { if (w + word.length * 13.2 > maxW && lines[lines.length - 1].length) { lines.push([]); w = 0; } lines[lines.length - 1].push(...word); w += word.length * 13.2; word = []; };
+  for (const c of chars) { word.push(c); if (c.ch === ' ') flush(); }
+  flush();
+  return lines;
+}
+
+function drawDialogue() {
+  const bx = 24, by = 330, bw = 592, bh = 138;
+  g.fillStyle = '#000'; g.fillRect(bx, by, bw, bh);
+  g.strokeStyle = '#fff'; g.lineWidth = 6; g.strokeRect(bx, by, bw, bh);
+  const face = pageFace(dlg), textX = face || true ? bx + 120 : bx + 24;
+  // portret: kwadrat w kolorze NPC z prosta mina
+  const n = NPCS[npcId], px = bx + 18, py = by + 22;
+  g.fillStyle = n.color; g.fillRect(px, py, 84, 84);
+  g.fillStyle = '#fff'; g.fillRect(px + 16, py + 22, 14, 14); g.fillRect(px + 54, py + 22, 14, 14);
+  g.fillStyle = '#000'; g.fillRect(px + 20, py + 26, 6, 6); g.fillRect(px + 58, py + 26, 6, 6);
+  g.fillRect(px + 22, py + (face === 'sad' ? 62 : 56), 40, 5);
+  if (face === 'smile') { g.fillRect(px + 18, py + 52, 5, 5); g.fillRect(px + 61, py + 52, 5, 5); }
+  if (face === 'sad') { g.fillRect(px + 18, py + 66, 5, 5); g.fillRect(px + 61, py + 66, 5, 5); }
+  // tekst
+  const lines = wrapChars(allChars(dlg), bw - 150), shown = visibleChars(dlg).length;
+  g.font = '22px monospace'; g.textBaseline = 'top';
+  let k = 0;
+  lines.forEach((ln, li) => {
+    let x = textX;
+    ln.forEach(c => {
+      if (k < shown) {
+        const sx = c.shake ? (Math.random() - 0.5) * 3 : 0, sy = c.shake ? (Math.random() - 0.5) * 3 : 0;
+        g.fillStyle = c.color || '#fff'; g.fillText(c.ch, x + sx, by + 22 + li * 28 + sy);
+      }
+      x += 13.2; k++;
+    });
+  });
+  g.textBaseline = 'alphabetic';
+  if (dlg.phase === 'wait' && dlg.options.length <= 1 && Math.floor(tick / 20) % 2 === 0) { g.fillStyle = '#fff'; g.fillRect(bx + bw - 34, by + bh - 26, 14, 10); }   // znacznik "dalej"
+  if (dlg.phase === 'choice') {
+    dlg.options.forEach((o, i) => {
+      const ox = bx + 140 + i * 210, oy = by + bh - 34;
+      if (dlg.cursor === i) { g.fillStyle = '#ff2a2a'; g.fillRect(ox - 22, oy + 4, 12, 10); }
+      g.fillStyle = dlg.cursor === i ? '#ffe600' : '#fff'; g.font = '20px monospace'; g.fillText('* ' + o.label, ox, oy);
+    });
+  }
+  g.fillStyle = '#fff'; g.font = 'bold 13px monospace'; g.fillText(dlg.npc, bx + 20, by - 8);
+}
+
+function render() {
+  g.clearRect(0, 0, 640, 480);
+  ids.forEach(drawNpc);
+  drawHud();
+  if (dlg) drawDialogue();
+  window.__d = { phase: dlg && dlg.phase, page: dlg && dlg.page, xp, quests: JSON.stringify(qs.quests) };
+}
+
+let last = performance.now(), acc = 0;
+function loop(now) {
+  acc += Math.min(100, now - last); last = now;
+  while (acc >= 1000 / 60) { frameStep(); acc -= 1000 / 60; }
+  render();
+  requestAnimationFrame(loop);
+}
+requestAnimationFrame(loop);
+</script>
+</body>
+</html>
