@@ -169,33 +169,36 @@ const SPRITES = {
   ], { g: rgb(150, 150, 160), b: rgb(40, 90, 200), y: rgb(230, 200, 60) }),
 };
 
-// postac NPC: 'h' wlosy, 's' skora, 'e' oczy, 'c' ubranie, 'd' spodnie
-const NPC_ROWS = [
-  '....hhhh....',
-  '...hhhhhh...',
-  '...ssssss...',
-  '...sessse...',
-  '...ssssss...',
-  '....ssss....',
-  '..cccccccc..',
-  '.cccccccccc.',
-  '.cccccccccc.',
-  'sscccccccccs',
-  'ss.cccccc.ss',
-  '...cccccc...',
-  '...cccccc...',
-  '...dd..dd...',
-  '...dd..dd...',
-  '...dd..dd...',
-  '..ddd..ddd..',
-];
+// postac NPC sklada sie z glowy i ciala. Znaki: h wlosy, s skora, e oczy, c gora ubrania, d dol, k czapka/buty, l oprawki okularow
+const NPC_HEADS = {
+  short: ['....hhhh....', '...hhhhhh...', '...ssssss...', '...sessse...', '...ssssss...', '....ssss....'],
+  long: ['...hhhhhh...', '..hhhhhhhh..', '..hssssssh..', '..hsessseh..', '..hhssssshh.', '..hh.ss.hh..'],
+  bun: ['.....hh.....', '...hhhhhh...', '...ssssss...', '...sessse...', '...ssssss...', '....ssss....'],
+  cap: ['...kkkkkk...', '..kkkkkkkk..', '..ssssssss..', '...sessse...', '...ssssss...', '....ssss....'],
+  hat: ['....kkkk....', '..kkkkkkkk..', '...ssssss...', '...sessse...', '...ssssss...', '....ssss....'],
+  bald: ['............', '....ssss....', '...ssssss...', '...sessse...', '...ssssss...', '....ssss....'],
+};
+const NPC_BODIES = {
+  pants: ['..cccccccc..', '.cccccccccc.', '.cccccccccc.', 'sscccccccccs', 'ss.cccccc.ss', '...cccccc...', '...cccccc...', '...dd..dd...', '...dd..dd...', '...dd..dd...', '..kkk..kkk..'],
+  skirt: ['..cccccccc..', '.cccccccccc.', '.cccccccccc.', 'sscccccccccs', 'ss.cccccc.ss', '...dddddd...', '..dddddddd..', '..dddddddd..', '...ss..ss...', '...ss..ss...', '..kk....kk..'],
+  coat: ['..cccccccc..', '.cccccccccc.', '.cccccccccc.', 'sscccccccccs', 'ss.cccccc.ss', '..cccccccc..', '..cccccccc..', '..cccccccc..', '...dd..dd...', '...dd..dd...', '..kkk..kkk..'],
+};
+const hexRgb = hex => { const v = parseInt(hex.slice(1), 16); return rgb(v >> 16, (v >> 8) & 255, v & 255); };
 const npcSpriteCache = {};
-function npcSprite(hex) {                       // sprite NPC w kolorze ubrania hex (#rrggbb)
-  if (!npcSpriteCache[hex]) {
-    const v = parseInt(hex.slice(1), 16);
-    npcSpriteCache[hex] = makeSprite(NPC_ROWS, { h: rgb(60, 40, 30), s: rgb(230, 190, 160), e: rgb(20, 20, 30), c: rgb(v >> 16, (v >> 8) & 255, v & 255), d: rgb(40, 44, 60) });
+// look: { head, body, hair, skin, bottom, acc, glasses }, top: kolor gory ubrania (#rrggbb)
+function npcSprite(look, top) {
+  const l = typeof look === 'string' ? { top: look } : { ...look, top: top || (look && look.top) };
+  const key = JSON.stringify(l);
+  if (!npcSpriteCache[key]) {
+    const head = [...(NPC_HEADS[l.head] || NPC_HEADS.short)];
+    if (l.glasses) head[3] = '..lelsslel..'.padEnd(12, '.');
+    const rows = [...head, ...(NPC_BODIES[l.body] || NPC_BODIES.pants)];
+    npcSpriteCache[key] = makeSprite(rows, {
+      h: hexRgb(l.hair || '#3c281e'), s: hexRgb(l.skin || '#e6bea0'), e: rgb(20, 20, 30), c: hexRgb(l.top || '#6a6a80'),
+      d: hexRgb(l.bottom || '#282c3c'), k: hexRgb(l.acc || '#2a2a30'), l: rgb(30, 30, 40),
+    });
   }
-  return npcSpriteCache[hex];
+  return npcSpriteCache[key];
 }
 
 SPRITES.pieczatka = makeSprite([

@@ -10,7 +10,7 @@ const lctx = low.getContext('2d');
 const img = lctx.createImageData(W, H);
 const buf = new Uint32Array(img.data.buffer);
 const zbuf = new Float32Array(W);
-let showMap = true;
+let showMap = 1;                    // minimapa: 0 wylaczona, 1 mala, 2 duza (klawisz M)
 
 // oswietlenie: jasna szkola, lekka mgla z odlegloscia, latarka podbija srodek ekranu
 const EXPOSURE = 0.97;
@@ -39,7 +39,7 @@ const lightAt = (g, x, dist) => Math.min(256, 256 * exposure(g, x) / (1 + dist *
 // podloga i sufit z teksturami (casting po wierszach)
 const colExp = new Float32Array(W);
 function renderFloorCeil(g, cam) {
-  const p = g.player, f = g.world.floors[g.floor], mask = edgeMask(g.world, g.floor), mw = f.grid[0].length, mh = f.grid.length;
+  const p = g.player, f = g.world.floors[g.floor], set = THEME_SETS[g.floor], mask = edgeMask(g.world, g.floor), mw = f.grid[0].length, mh = f.grid.length;
   const rx0 = cam.dirX - cam.planeX, ry0 = cam.dirY - cam.planeY, rx1 = cam.dirX + cam.planeX, ry1 = cam.dirY + cam.planeY;
   for (let x = 0; x < W; x++) colExp[x] = exposure(g, x);
   for (let y = H / 2 + 1; y < H; y++) {
@@ -51,8 +51,8 @@ function renderFloorCeil(g, cam) {
       const cx = Math.floor(fx), cy = Math.floor(fy), u = fx - cx, v = fy - cy;
       const sh = Math.min(256, fog * colExp[x]) | 0;
       const inside = cx >= 0 && cy >= 0 && cx < mw && cy < mh;
-      buf[fi + x] = shade(inside ? floorColor(mask[cy * mw + cx], f.stairCells[cy][cx], u, v) : FLOOR_STRIPE, sh);
-      const c = ceilingColor(cx, cy, u, v);
+      buf[fi + x] = shade(inside ? floorColor(set, mask[cy * mw + cx], f.stairCells[cy][cx], u, v) : set.stripe, sh);
+      const c = ceilingColor(set, cx, cy, u, v);
       buf[ci + x] = c === LED_COLOR ? c : shade(c, sh);
     }
   }
@@ -81,11 +81,13 @@ function renderWalls(g, cam) {
     wx -= Math.floor(wx);
     let tx = Math.floor(wx * 64);
     if ((side === 0 && rdx > 0) || (side === 1 && rdy < 0)) tx = 63 - tx;
-    const tex = TEX[hit], step = 64 / lineH;
+    const tex = THEME_SETS[g.floor].tex[hit], step = 64 / lineH;
     let tp = (y0 - H / 2 + lineH / 2) * step;
-    const sh = (lightAt(g, x, dist) * (side ? 0.8 : 1)) | 0;
+    const sh = (lightAt(g, x, dist) * (side ? 0.8 : 1)) | 0, top = H / 2 - lineH / 2;
     for (let y = y0; y <= y1; y++) {
-      buf[y * W + x] = shade(tex[(tp & 63) * 64 + tx], sh);
+      // cieniowanie przy suficie i podlodze (ambient occlusion): ciemniej tuz przy krawedziach sciany
+      const t = (y - top) / lineH, e = Math.min(t, 1 - t), ao = e < 0.14 ? 0.72 + 0.28 * (e / 0.14) : 1;
+      buf[y * W + x] = shade(tex[(tp & 63) * 64 + tx], (sh * ao) | 0);
       tp += step;
     }
   }
@@ -94,12 +96,12 @@ function renderWalls(g, cam) {
 // lista obiektow do narysowania na biezacym pietrze
 function spriteList(g) {
   const fs = g.floors[g.floor], list = [];
-  fs.enemies.filter(e => e.alive).forEach(e => list.push({ x: e.x, y: e.y, spr: SPRITES[e.type], scale: ENEMY_TYPES[e.type].scale, hit: e.hit }));
+  fs.enemies.filter(e => e.alive).forEach(e => list.push({ x: e.x, y: e.y, spr: SPRITES[e.type], scale: ENEMY_TYPES[e.type].scale, hit: e.hit, shadow: true }));
   fs.pickups.forEach(k => list.push({ x: k.x, y: k.y, spr: SPRITES.food, scale: 0.28 }));
   fs.items.forEach(k => list.push({ x: k.x, y: k.y, spr: SPRITES[k.item], scale: 0.3 }));
   g.npcs.filter(n => n.floor === g.floor).forEach(n => {
     const def = g.npcDefs[n.id];
-    list.push({ x: n.x, y: n.y, spr: npcSprite(def.color), scale: 0.85, marker: npcMarker(g.qs, QUEST_DEFS, g.npcDefs, n.id) });
+    list.push({ x: n.x, y: n.y, spr: npcSprite(def.look, def.color), scale: (def.look && def.look.scale) || 0.85, name: def.name, shadow: true, marker: npcMarker(g.qs, QUEST_DEFS, g.npcDefs, n.id) });
   });
   g.world.floors[g.floor].decor.forEach(d => {
     if (d.kind === 'bench') list.push({ x: d.x, y: d.y, spr: SPRITES.bench, scale: 0.34 });
@@ -110,7 +112,8 @@ function spriteList(g) {
   g.world.stairs.filter(s => s.floor === g.floor).forEach(s => {
     if (seen.has(s.x + ',' + s.y)) return;
     seen.add(s.x + ',' + s.y);
-    list.push({ x: s.x + 0.5, y: s.y + 0.5, spr: SPRITES.stairs, scale: 0.4 });
+    const ups = g.world.stairs.some(t => t.floor === g.floor && t.x === s.x && t.y === s.y && t.to[0] > g.floor);
+    list.push({ x: s.x + 0.5, y: s.y + 0.5, spr: iconSprite(ups ? 'stairsUp' : 'stairsDown'), scale: 0.9 });
   });
   return list;
 }
@@ -142,8 +145,46 @@ function renderSprites(g, cam) {
         buf[y * W + x] = s.hit > 0 ? rgb(255, 255, 255) : shade(c, sh);
       }
     }
-    if (s.marker && scrX >= 0 && scrX < W && ty < zbuf[scrX]) markers.push({ x: scrX, y: y0 - 3, ch: s.marker });
+    if (s.shadow) {                                     // cien kontaktowy pod postacia
+      for (let x = Math.max(0, x0); x < Math.min(W, x0 + w); x++) {
+        if (ty >= zbuf[x]) continue;
+        for (let y = floorY; y < Math.min(H, floorY + Math.max(1, Math.round(h * 0.07))); y++) buf[y * W + x] = shade(buf[y * W + x], 120);
+      }
+    }
+    if ((s.marker || s.name) && scrX >= 0 && scrX < W && ty < zbuf[scrX]) markers.push({ x: scrX, y: y0 - 3, ch: s.marker || '', name: s.name, ty });
   }
+}
+
+// rzut punktu swiata na ekran (kolumna i glebokosc)
+function project(cam, p, x, y) {
+  const inv = 1 / (cam.planeX * cam.dirY - cam.dirX * cam.planeY), sx = x - p.x, sy = y - p.y;
+  const tx = inv * (cam.dirY * sx - cam.dirX * sy), ty = inv * (-cam.planeY * sx + cam.planeX * sy);
+  return { scrX: Math.floor(W / 2 * (1 + tx / ty)), ty };
+}
+
+// etykiety drzwi sal i schodow widoczne w polu widzenia
+let labels = [];
+function collectLabels(g, cam) {
+  labels = [];
+  const p = g.player, F = g.world.floors[g.floor], seen = new Set();
+  for (const door of Object.values(F.doors)) {
+    if (seen.has(door.id)) continue;
+    seen.add(door.id);
+    const c = doorCenter(door), pr = project(cam, p, c.x, c.y);
+    if (pr.ty < 0.8 || pr.ty > 14 || pr.scrX < 0 || pr.scrX >= W || pr.ty > zbuf[pr.scrX] + 1.1) continue;
+    const L = doorLabel(g, door);
+    labels.push({ x: pr.scrX, y: H / 2 - 0.55 * H / pr.ty, ty: pr.ty, text: L.text, sub: L.sub, color: L.color });
+  }
+  const done = new Set();
+  g.world.stairs.filter(s => s.floor === g.floor).forEach(s => {
+    const key = s.x + ',' + s.y;
+    if (done.has(key)) return;
+    done.add(key);
+    const pr = project(cam, p, s.x + 0.5, s.y + 0.5);
+    if (pr.ty < 0.8 || pr.ty > 18 || pr.scrX < 0 || pr.scrX >= W || pr.ty > zbuf[pr.scrX] + 1.1) return;
+    const dests = g.world.stairs.filter(t => t.floor === g.floor && t.x === s.x && t.y === s.y).map(t => g.world.floors[t.to[0]].name).join(' / ');
+    labels.push({ x: pr.scrX, y: H / 2 - 0.25 * H / pr.ty, ty: pr.ty, text: 'SCHODY', sub: dests, color: '#4ad66d' });
+  });
 }
 
 // rece, pistolet i latarka z js/weapon-art.js
@@ -164,40 +205,113 @@ function hudBar(x, y, w, frac, color) {
   sctx.fillStyle = color; sctx.fillRect(x, y, w * Math.max(0, Math.min(1, frac)), 7);
 }
 
-function drawMinimap(g) {
-  const c = 3, gw = g.grid[0].length * c, gh = g.grid.length * c, x0 = W * SCALE - gw - 10, y0 = 10, p = g.player;
-  sctx.fillStyle = 'rgba(0,0,0,.6)'; sctx.fillRect(x0 - 3, y0 - 3, gw + 6, gh + 6);
+// tekst na ciemnej plakietce: czytelny na kazdym tle
+function pill(str, x, y, color, size, align = 'center') {
+  sctx.font = `bold ${size}px monospace`;
+  const w = sctx.measureText(str).width + 12, x0 = align === 'center' ? x - w / 2 : align === 'right' ? x - w : x;
+  sctx.fillStyle = 'rgba(8,10,18,.72)'; sctx.fillRect(x0, y - size, w, size + 7);
+  sctx.fillStyle = color; sctx.textAlign = 'left'; sctx.fillText(str, x0 + 6, y);
+}
+
+function drawMinimap(g, objective) {
+  const big = showMap === 2, c = big ? 6 : 3, gw = g.grid[0].length * c, gh = g.grid.length * c, p = g.player;
+  const x0 = big ? Math.floor((W * SCALE - gw) / 2) : W * SCALE - gw - 10, y0 = big ? 70 : 76;
+  sctx.fillStyle = big ? 'rgba(0,0,0,.82)' : 'rgba(0,0,0,.6)'; sctx.fillRect(x0 - 4, y0 - 4, gw + 8, gh + 8);
   g.grid.forEach((row, y) => row.forEach((v, x) => {
     if (!v) return;
-    sctx.fillStyle = v === 4 ? '#c8873a' : '#6d6d7e';
+    sctx.fillStyle = v === 4 ? '#e0903a' : '#6d6d7e';
     sctx.fillRect(x0 + x * c, y0 + y * c, c, c);
   }));
   g.world.floors[g.floor].stairCells.forEach((row, y) => row.forEach((v, x) => {
-    if (v) { sctx.fillStyle = 'rgba(74,214,109,.35)'; sctx.fillRect(x0 + x * c, y0 + y * c, c, c); }
+    if (v) { sctx.fillStyle = 'rgba(74,214,109,.4)'; sctx.fillRect(x0 + x * c, y0 + y * c, c, c); }
   }));
-  sctx.fillStyle = '#7cc4ff';
-  g.npcs.filter(n => n.floor === g.floor).forEach(n => sctx.fillRect(x0 + n.x * c - 1, y0 + n.y * c - 1, 3, 3));
-  sctx.fillStyle = '#ff5555';
-  g.floors[g.floor].enemies.forEach(e => { if (e.alive) sctx.fillRect(x0 + e.x * c - 1, y0 + e.y * c - 1, 3, 3); });
-  sctx.fillStyle = '#4ad66d'; sctx.fillRect(x0 + p.x * c - 2, y0 + p.y * c - 2, 4, 4);
-  sctx.strokeStyle = '#4ad66d'; sctx.beginPath();
+  const dot = (x, y, color, r) => { sctx.fillStyle = color; sctx.fillRect(x0 + x * c - r, y0 + y * c - r, 2 * r + 1, 2 * r + 1); };
+  g.npcs.filter(n => n.floor === g.floor).forEach(n => dot(n.x, n.y, '#7cc4ff', big ? 2 : 1));
+  g.floors[g.floor].enemies.forEach(e => { if (e.alive) dot(e.x, e.y, '#ff5555', big ? 2 : 1); });
+  if (objective && objective.floor === g.floor) {                      // pulsujacy znacznik celu
+    const pulse = 2 + Math.abs(Math.sin(g.ticks / 12)) * 3;
+    sctx.strokeStyle = '#ffe600'; sctx.lineWidth = 2; sctx.beginPath(); sctx.arc(x0 + objective.x * c, y0 + objective.y * c, pulse + (big ? 3 : 1), 0, 7); sctx.stroke();
+  }
+  const stairsSeen = new Set();
+  g.world.stairs.filter(t => t.floor === g.floor).forEach(t => {
+    const key = t.x + ',' + t.y;
+    if (stairsSeen.has(key)) return;
+    stairsSeen.add(key);
+    drawIcon(sctx, g.world.stairs.some(u => u.floor === g.floor && u.x === t.x && u.y === t.y && u.to[0] > g.floor) ? 'stairsUp' : 'stairsDown', x0 + t.x * c - (big ? 8 : 6), y0 + t.y * c - (big ? 8 : 6), big ? 1 : 0.75);
+  });
+  dot(p.x, p.y, '#4ad66d', big ? 3 : 2);
+  sctx.strokeStyle = '#4ad66d'; sctx.lineWidth = 1; sctx.beginPath();
   sctx.moveTo(x0 + p.x * c, y0 + p.y * c);
   sctx.lineTo(x0 + (p.x + Math.cos(p.angle) * 3) * c, y0 + (p.y + Math.sin(p.angle) * 3) * c);
   sctx.stroke();
+  sctx.font = '11px monospace';
+  hudText(big ? 'MAPA: ' + g.world.floors[g.floor].name + '  (M: zmień rozmiar)' : g.world.floors[g.floor].name, x0, y0 - 8, '#ddd');
+  if (big) {
+    hudText('Ty', x0, y0 + gh + 18, '#4ad66d'); hudText('NPC', x0 + 40, y0 + gh + 18, '#7cc4ff');
+    hudText('Wróg', x0 + 90, y0 + gh + 18, '#ff5555'); hudText('Drzwi sal', x0 + 140, y0 + gh + 18, '#e0903a');
+    hudText('Cel', x0 + 230, y0 + gh + 18, '#ffe600'); hudText('Schody', x0 + 280, y0 + gh + 18, '#4ad66d');
+  }
+}
+
+// strzalka kompasu wskazuje cel wzgledem kierunku patrzenia
+function drawArrow(cx, cy, rel, size, color) {
+  sctx.save(); sctx.translate(cx, cy); sctx.rotate(rel);
+  sctx.fillStyle = color; sctx.strokeStyle = '#000'; sctx.lineWidth = 2;
+  sctx.beginPath(); sctx.moveTo(0, -size); sctx.lineTo(size * 0.7, size * 0.7); sctx.lineTo(0, size * 0.3); sctx.lineTo(-size * 0.7, size * 0.7); sctx.closePath();
+  sctx.stroke(); sctx.fill(); sctx.restore();
+}
+
+function drawObjective(g, o) {
+  const bw = W * SCALE, pw = 560, px = (bw - pw) / 2, py = 10;
+  sctx.fillStyle = 'rgba(8,10,18,.78)'; sctx.fillRect(px, py, pw, 62);
+  sctx.strokeStyle = '#ffe600'; sctx.lineWidth = 2; sctx.strokeRect(px, py, pw, 62);
+  sctx.font = 'bold 11px monospace'; hudText('CEL', px + 70, py + 15, '#ffe600');
+  sctx.font = 'bold 15px monospace';
+  const words = o.text.split(' '), lines = [''];
+  for (const w of words) { if ((lines[lines.length - 1] + w).length > 52) lines.push(''); lines[lines.length - 1] += w + ' '; }
+  lines.slice(0, 2).forEach((l, i) => hudText(l, px + 70, py + 33 + i * 18, '#fff'));
+  if (o.dist > 1.8) { drawArrow(px + 34, py + 31, o.rel, 18, '#ffe600'); sctx.font = '12px monospace'; hudText(Math.round(o.dist) + ' m', px + 34, py + 58, '#ffe600', 'center'); }
+  else { sctx.font = 'bold 12px monospace'; hudText('TU', px + 34, py + 36, '#4ad66d', 'center'); }
 }
 
 function drawQuestTracker(g) {
   const tr = trackedQuests(g.qs, QUEST_DEFS, g.npcDefs);
   if (!tr.length) return;
-  sctx.font = 'bold 13px monospace'; hudText('ZADANIA', 14, 22, '#ffe600');
+  const y0 = 82, hgt = 32 + tr.length * 20;
+  sctx.fillStyle = 'rgba(8,10,18,.7)'; sctx.fillRect(10, y0, 330, hgt);
+  sctx.font = 'bold 13px monospace'; hudText('ZADANIA', 18, y0 + 18, '#ffe600');
   sctx.font = '13px monospace';
-  tr.forEach((t, i) => hudText(t.title + ': ' + t.text, 14, 42 + i * 18, t.ready ? '#4ad66d' : '#fff'));
+  tr.forEach((t, i) => hudText((t.ready ? '[ok] ' : '[ ] ') + t.title + ': ' + t.text, 18, y0 + 38 + i * 20, t.ready ? '#4ad66d' : '#fff'));
+}
+
+function drawHints(g) {
+  if (g.ticks > 1800) return;
+  const a = Math.min(1, (1800 - g.ticks) / 300), y = H * SCALE - 96;
+  sctx.globalAlpha = a;
+  sctx.fillStyle = 'rgba(8,10,18,.72)'; sctx.fillRect(10, y - 44, 372, 92);
+  sctx.font = 'bold 13px monospace';
+  hudText('STEROWANIE', 18, y - 26, '#ffe600'); sctx.font = '13px monospace';
+  hudText('WASD: ruch    mysz / strzałki: rozglądanie', 18, y - 8, '#fff');
+  hudText('E: rozmowa    F: latarka    H: kanapka', 18, y + 10, '#fff');
+  hudText('M: mapa    Esc: pauza    Wejdź w drzwi sali: walka', 18, y + 28, '#fff');
+  sctx.globalAlpha = 1;
 }
 
 function drawHud(g) {
-  const p = g.player, bw = W * SCALE, y = H * SCALE - 44;
+  const p = g.player, bw = W * SCALE, y = H * SCALE - 44, o = objectiveOf(g);
   if (g.hurt > 0) { sctx.fillStyle = `rgba(200,0,0,${g.hurt / 20})`; sctx.fillRect(0, 0, bw, H * SCALE); }
-  sctx.fillStyle = 'rgba(0,0,0,.65)'; sctx.fillRect(0, y, bw, 44);
+  // etykiety w swiecie: drzwi, schody, imiona NPC
+  for (const l of labels) {
+    const size = Math.max(11, Math.min(19, Math.round(28 - l.ty * 1.3))), sx = l.x * SCALE, sy = l.y * SCALE;
+    pill(l.text, sx, sy - size - 4, '#fff', size);
+    pill(l.sub, sx, sy - 2, l.color, Math.max(10, size - 2));
+  }
+  for (const m of markers) {
+    if (m.name && m.ty < 7) pill(m.name, m.x * SCALE, m.y * SCALE - (m.ch ? 34 : 4), '#fff', 13);
+    if (m.ch) { sctx.font = 'bold 30px monospace'; sctx.lineWidth = 4; sctx.strokeStyle = '#000'; sctx.textAlign = 'center'; sctx.strokeText(m.ch, m.x * SCALE, m.y * SCALE - 4); hudText(m.ch, m.x * SCALE, m.y * SCALE - 4, m.ch === '?' ? '#4ad66d' : m.ch === '>' ? '#7cc4ff' : '#ffe600', 'center'); }
+  }
+  // pasek statusu
+  sctx.fillStyle = 'rgba(0,0,0,.72)'; sctx.fillRect(0, y, bw, 44);
   sctx.font = 'bold 18px monospace';
   hudText('HP ' + p.hp + '/' + p.maxHp, 16, y + 20, '#ff6b6b');
   hudBar(16, y + 28, 150, p.hp / p.maxHp, '#ff6b6b');
@@ -205,27 +319,39 @@ function drawHud(g) {
   hudBar(200, y + 28, 130, p.xp / xpNeeded(p.level), '#7cc4ff');
   hudText('KANAPKI ' + g.food, 360, y + 20, '#ffd166');
   if (p.weapon) hudText('AMMO ' + p.ammo, 540, y + 20, '#ffd166');
-  sctx.font = '14px monospace';
-  hudText(g.world.floors[g.floor].name, bw - 16, y + 20, '#aaa', 'right');
-  hudText(p.flashlight ? 'F: latarka ON' : 'F: latarka', bw - 16, y + 38, p.flashlight ? '#ffe9a8' : '#777', 'right');
+  sctx.font = 'bold 14px monospace';
+  hudText(g.world.floors[g.floor].name.toUpperCase(), bw - 16, y + 20, '#fff', 'right');
+  sctx.font = '12px monospace';
+  hudText(p.flashlight ? 'F: latarka ON' : 'F: latarka', bw - 16, y + 38, p.flashlight ? '#ffe9a8' : '#888', 'right');
+  if (g.prompt) pill(g.prompt, bw / 2, y - 18, '#fff', 17);
   if (g.msgT > 0) {
-    sctx.font = 'bold 34px monospace';
     sctx.globalAlpha = Math.min(1, g.msgT / 30);
-    hudText(g.msg, bw / 2, 110, '#7cc4ff', 'center');
+    pill(g.msg, bw / 2, 140, '#7cc4ff', 28);
     sctx.globalAlpha = 1;
   }
-  if (g.prompt) { sctx.font = 'bold 18px monospace'; hudText(g.prompt, bw / 2, y - 14, '#fff', 'center'); }
-  sctx.font = 'bold 28px monospace';
-  for (const m of markers) hudText(m.ch, m.x * SCALE, m.y * SCALE, m.ch === '?' ? '#4ad66d' : '#ffe600', 'center');
+  drawObjective(g, o);
   drawQuestTracker(g);
-  if (showMap) drawMinimap(g);
+  drawHints(g);
+  if (showMap) drawMinimap(g, o);
+}
+
+// delikatna winieta ciemniejaca rogi ekranu
+let vignette = null;
+function drawVignette() {
+  if (!vignette) {
+    vignette = sctx.createRadialGradient(W * SCALE / 2, H * SCALE / 2, H * SCALE * 0.35, W * SCALE / 2, H * SCALE / 2, W * SCALE * 0.62);
+    vignette.addColorStop(0, 'rgba(0,0,0,0)'); vignette.addColorStop(1, 'rgba(0,0,0,.38)');
+  }
+  sctx.fillStyle = vignette; sctx.fillRect(0, 0, W * SCALE, H * SCALE);
 }
 
 function render(g, withHud) {
   const cam = cameraOf(g.player);
   renderFloorCeil(g, cam); renderWalls(g, cam); renderSprites(g, cam);
+  collectLabels(g, cam);
   lctx.putImageData(img, 0, 0);
   drawFirstPerson(g);
   sctx.drawImage(low, 0, 0, W * SCALE, H * SCALE);
+  drawVignette();
   if (withHud) drawHud(g);
 }

@@ -1,0 +1,87 @@
+<!doctype html>
+<html lang="pl">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>Gliwice Raid — ikony</title>
+  <style>
+    * { box-sizing: border-box; }
+    body {
+      margin: 0;
+      padding: 32px;
+      color: #eef2f7;
+      background: #0b0e14;
+      font-family: ui-monospace, SFMono-Regular, Consolas, monospace;
+    }
+    h1 { margin: 0 0 28px; color: #4ad66d; font-size: 24px; }
+    h2 { margin: 28px 0 14px; color: #9aa8ba; font-size: 15px; text-transform: uppercase; }
+    .grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(180px, 1fr)); gap: 16px; }
+    .card {
+      display: grid;
+      place-items: center;
+      min-height: 150px;
+      padding: 16px;
+      border: 2px solid #202a38;
+      background: #111722;
+      box-shadow: 5px 5px 0 #05070a;
+    }
+    .boss { min-height: 260px; }
+    canvas { display: block; image-rendering: pixelated; }
+    p { min-height: 2.4em; margin: 12px 0 0; text-align: center; line-height: 1.2; }
+  </style>
+</head>
+<body>
+  <h1>Gliwice Raid — atlas ikon</h1>
+  <h2>Schody</h2>
+  <section class="grid" id="stairs"></section>
+  <h2>Potwory</h2>
+  <section class="grid" id="monsters"></section>
+  <h2>Bossowie</h2>
+  <section class="grid" id="bosses"></section>
+
+  <script src="js/assets.js"></script>
+  <script src="js/icons.js"></script>
+  <script>
+    const stairs = ['stairsUp', 'stairsDown'];
+    const monsters = ['bug', 'glitch'];
+    const bosses = [
+      'Szalona Powtórka',
+      'Kserokopiarka Zagłady',
+      'Zawieszony Projektor',
+      'Kartkówka-Widmo',
+      'Nieskończona Pętla',
+      'Błąd 404',
+      'Dyrektor Bugów',
+    ];
+
+    function addCard(parent, name, size, boss) {
+      const card = document.createElement('article');
+      const canvas = document.createElement('canvas');
+      const label = document.createElement('p');
+      card.className = boss ? 'card boss' : 'card';
+      canvas.width = size;
+      canvas.height = size;
+      canvas.dataset.icon = name;
+      label.textContent = name;
+      card.append(canvas, label);
+      parent.append(card);
+      if (!boss) drawIcon(canvas.getContext('2d'), name, 0, 0, 6);
+    }
+
+    stairs.forEach(name => addCard(document.querySelector('#stairs'), name, 96, false));
+    monsters.forEach(name => addCard(document.querySelector('#monsters'), name, 96, false));
+    bosses.forEach(name => addCard(document.querySelector('#bosses'), name, 192, true));
+
+    function animate(t) {
+      document.querySelectorAll('#bosses canvas').forEach(canvas => {
+        const ctx = canvas.getContext('2d');
+        ctx.clearRect(0, 0, canvas.width, canvas.height);
+        drawBossPortrait(ctx, canvas.dataset.icon, 96, 96, 6, t / 16.67);
+      });
+      requestAnimationFrame(animate);
+    }
+
+    requestAnimationFrame(animate);
+  </script>
+</body>
+</html>

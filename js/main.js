@@ -184,7 +184,7 @@ addEventListener('keydown', e => {
   if (scene === 'play' && ['Space', 'ArrowUp', 'ArrowDown', 'ArrowLeft', 'ArrowRight'].includes(e.code)) e.preventDefault();
   if (e.repeat) return;
   if (e.code === 'Escape') onEscape();
-  else if (e.code === 'KeyM') showMap = !showMap;
+  else if (e.code === 'KeyM') showMap = (showMap + 1) % 3;
   else if (scene === 'play') {
     if (e.code === 'KeyE') edges.interact = true;
     else if (e.code === 'KeyF') edges.flashlight = true;

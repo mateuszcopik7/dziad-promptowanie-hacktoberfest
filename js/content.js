@@ -135,3 +135,22 @@ function roomEncounter(zone, floorIdx) {
     boss: { ...tpl, hp: Math.round(tpl.hp * scale), xp: Math.round(tpl.xp * scale) }, reward: { xp: 20 + 10 * floorIdx, unlock: [] },
   };
 }
+
+// wyglad postaci (sprite NPC): rozne fryzury, kolory skory i wlosow, okulary, spodnice, czapki
+const NPC_LOOKS = {
+  woznik: { head: 'cap', body: 'pants', hair: '#6b6b6b', skin: '#e0b48c', bottom: '#3a4a6a', acc: '#4a5568', scale: 0.88 },
+  sekretarka: { head: 'bun', body: 'skirt', hair: '#8a5a3a', skin: '#f0c8a4', bottom: '#444a5a', acc: '#2a2a2a', glasses: true, scale: 0.86 },
+  uczen: { head: 'short', body: 'pants', hair: '#2a1e18', skin: '#e8c0a0', bottom: '#2f3d6a', acc: '#e8e8e8', scale: 0.8 },
+  bibliotekarka: { head: 'long', body: 'skirt', hair: '#b8b8c0', skin: '#f0cfae', bottom: '#5a3a5a', acc: '#3a2a2a', glasses: true, scale: 0.85 },
+  dyrektor: { head: 'bun', body: 'coat', hair: '#2a2a30', skin: '#e8c0a0', bottom: '#2c2c3a', acc: '#2a2a2a', scale: 0.92 },
+};
+const FLAVOR_LOOKS = [
+  { head: 'long', body: 'skirt', hair: '#d8b860', skin: '#ffd9b8', bottom: '#3a5a8a', acc: '#e8e8e8', scale: 0.8 },
+  { head: 'short', body: 'pants', hair: '#b0452a', skin: '#f0cfae', bottom: '#4a4a52', acc: '#e8e8e8', scale: 0.82 },
+  { head: 'cap', body: 'pants', hair: '#2a1e18', skin: '#c68a60', bottom: '#2f3d6a', acc: '#c0392b', scale: 0.84 },
+  { head: 'bun', body: 'coat', hair: '#9a9aa6', skin: '#f0cfae', bottom: '#3a3a4a', acc: '#2a2a2a', glasses: true, scale: 0.88 },
+  { head: 'hat', body: 'pants', hair: '#2a2a30', skin: '#8d5a3a', bottom: '#20242c', acc: '#20242c', scale: 0.95 },
+  { head: 'short', body: 'pants', hair: '#3a6ad0', skin: '#e8c0a0', bottom: '#5a2f2f', acc: '#e8e8e8', glasses: true, scale: 0.84 },
+  { head: 'bald', body: 'pants', hair: '#000000', skin: '#d8a478', bottom: '#2a3a2a', acc: '#2a2a30', scale: 0.8 },
+  { head: 'long', body: 'skirt', hair: '#6a3a22', skin: '#e0b48c', bottom: '#7a4a2a', acc: '#e8e8e8', scale: 0.86 },
+];

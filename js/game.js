@@ -29,7 +29,7 @@ const stateOf = g => g.floors[g.floor];
 function buildNpcs(world) {
   const defs = {}, list = [], used = new Set();
   for (const [id, d] of Object.entries(NPC_DEFS)) {
-    defs[id] = { ...d };
+    defs[id] = { ...d, look: NPC_LOOKS[id] };
     used.add(d.slot);
   }
   let flavor = 0;
@@ -38,7 +38,8 @@ function buildNpcs(world) {
     if (!id) {
       if (flavor >= FLAVOR_NPCS.length) return;
       id = 'flav-' + flavor;
-      defs[id] = { ...FLAVOR_NPCS[flavor++], quests: [] };
+      defs[id] = { ...FLAVOR_NPCS[flavor], look: FLAVOR_LOOKS[flavor], quests: [] };
+      flavor++;
     }
     list.push({ id, floor: fi, x: s.x + 0.5, y: s.y + 0.5 });
   }));
@@ -215,6 +216,24 @@ function doorStatus(g, door) {
   return { kind: 'encounter', zone };
 }
 
+// drzwi sali przed graczem (do 1.8 komorki wzdluz kierunku patrzenia)
+function doorAhead(g) {
+  const p = g.player, F = floorOf(g);
+  for (let d = 0.6; d <= 1.8; d += 0.3) {
+    const door = F.doors[Math.floor(p.x + Math.cos(p.angle) * d) + ',' + Math.floor(p.y + Math.sin(p.angle) * d)];
+    if (door) return door;
+  }
+  return null;
+}
+
+// opis drzwi sali: napis nad drzwiami, kolor i podpowiedz
+function doorLabel(g, door) {
+  const zone = floorOf(g).rooms[door.zone], st = doorStatus(g, door), name = (zone.number ? zone.number + ' ' : '') + zone.name;
+  if (g.cleared.includes(zone.id)) return { text: name, sub: 'ukończona', color: '#4ad66d', prompt: name + ': pusto, już zrobione' };
+  if (st.kind === 'msg') return { text: name, sub: 'zamknięte', color: '#9a9aa6', prompt: st.text };
+  return { text: name, sub: 'WALKA', color: '#ff9a1f', prompt: 'Idź naprzód: wejdziesz do sali ' + name + ' (walka z bossem)' };
+}
+
 const nearestNpc = g => {
   const p = g.player;
   let best = null, bestD = TALK_DISTANCE;
@@ -271,7 +290,9 @@ function step(g, it) {
   else if (!g.stairLock && !g.request) { g.request = { type: 'stairs', options: stairsNear(g.world, g.floor, p.x) }; g.stairLock = true; }
 
   const npc = nearestNpc(g);
-  g.prompt = npc ? 'E: porozmawiaj z ' + g.npcDefs[npc.id].name : '';
+  const doorFront = doorAhead(g);
+  g.prompt = npc ? 'E: porozmawiaj z ' + g.npcDefs[npc.id].name
+    : doorFront ? doorLabel(g, doorFront).prompt : onStairs ? 'Klatka schodowa: wybierz piętro w oknie' : '';
   if (it.interact && npc && !g.request) g.request = { type: 'npc', id: npc.id };
 
   if (it.flashlight) p.flashlight = !p.flashlight;

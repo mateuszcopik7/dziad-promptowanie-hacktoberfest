@@ -58,6 +58,8 @@ const SCREENS = {
 
   pause: () => `
     <h2>Pauza</h2>
+    <p class="text"><b>Cel:</b> ${objectiveOf(game).text}</p>
+    ${trackedQuests(game.qs, QUEST_DEFS, game.npcDefs).map(t => `<p class="text">${t.ready ? '[ok]' : '[ ]'} ${t.title}: ${t.text}</p>`).join('')}
     <button data-a="resume">Wznów</button>
     <button data-a="settings">Ustawienia</button>
     <button data-a="menu">Wyjdź do menu</button>`,

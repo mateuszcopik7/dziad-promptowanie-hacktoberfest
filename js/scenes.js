@@ -65,15 +65,17 @@ function drawDialogueBox(g, d, color, tick) {
   g.fillStyle = C_WHITE; g.font = 'bold 13px monospace'; g.fillText(d.npc, bx + 20, by - 8);
 }
 
-// def.look: { color, head } - placeholder bossa do czasu prawdziwej grafiki
+// portret bossa z icons.js; stary prostokat zostaje tylko dla bossa bez ikony
 function drawBossPlaceholder(g, b) {
-  const look = b.def.look || { color: '#7a4bd1', head: '#b79aff' };
-  const hitFlash = b.bar.hit && b.phase === 'text' && b.next === 'dodge' ? Math.sin(b.tick * 1.2) * 6 : 0;
-  g.save(); g.translate(320 + hitFlash, 80);
-  g.fillStyle = look.color; g.fillRect(-45, -40, 90, 100);
-  g.fillStyle = look.head; g.fillRect(-35, -70, 70, 40);
-  g.fillStyle = '#000'; g.fillRect(-22, -58, 12, 12); g.fillRect(10, -58, 12, 12); g.fillRect(-14, -38, 28, 5);
-  g.restore();
+  const shake = b.bar.hit && b.phase === 'text' && b.next === 'dodge' ? Math.sin(b.tick * 1.2) * 6 : 0;
+  if (typeof ICONS !== 'undefined' && ICONS[b.def.name]) drawBossPortrait(g, b.def.name, 320 + shake, 76, 4, b.tick);
+  else {
+    const look = b.def.look || { color: '#7a4bd1', head: '#b79aff' };
+    g.save(); g.translate(320 + shake, 80);
+    g.fillStyle = look.color; g.fillRect(-45, -40, 90, 100);
+    g.fillStyle = look.head; g.fillRect(-35, -70, 70, 40);
+    g.restore();
+  }
   g.font = '16px monospace'; g.textAlign = 'center'; g.fillStyle = C_WHITE; g.fillText(b.def.name, 320, 144);
   if (b.bar.hit > 0 && b.phase === 'text') {
     g.fillStyle = '#333'; g.fillRect(250, 20, 140, 12);

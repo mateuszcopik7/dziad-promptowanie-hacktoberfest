@@ -3,10 +3,10 @@ const fs = require('fs'), path = require('path'), vm = require('vm'), assert = r
 
 const ctx = vm.createContext({});
 const load = f => fs.readFileSync(path.join(__dirname, '../js', f), 'utf8');
-const src = ['world-data.js', 'world.js', 'content.js', 'quests.js', 'game.js'].map(load).join('\n');
+const src = ['world-data.js', 'world.js', 'content.js', 'quests.js', 'game.js', 'guide.js'].map(load).join('\n');
 vm.runInContext(src + `\nthis.api = { WORLD, NPC_DEFS, QUEST_DEFS, FOOD_PLACE, ITEM_PLACE, FINAL_ROOM, createGame, step, setFloor, useStairs, respawn,
   doorStatus, applyEffects, gainXp, xpNeeded, castDist, hasLOS, roomEncounter, chooseDialog, dialogFor, isUnlocked, questStatus, stairsNear,
-  createQuestState, onQuestKill, wallAt };`, ctx);
+  createQuestState, onQuestKill, wallAt, objectiveOf, doorCenter };`, ctx);
 const api = ctx.api;
 const idle = { move: 0, strafe: 0, turn: 0, fire: false, interact: false, flashlight: false, heal: false };
 let passed = 0;
@@ -229,6 +229,31 @@ test('XP daje poziomy, wiecej HP i leczenie', () => {
   assert.strictEqual(g.player.level, 2);
   assert.strictEqual(g.player.maxHp, 70);
   assert.strictEqual(g.player.hp, 40);
+});
+
+test('przewodnik: kolejne cele od Woznego po aule, miedzy pietrami przez schody', () => {
+  const g = api.createGame();
+  let o = api.objectiveOf(g);
+  assert(o.text.includes('Heniek') && o.floor === 0, 'start: porozmawiaj z Woznym');
+  talk(g, 'woznik', 'accept');
+  o = api.objectiveOf(g);
+  assert(o.text.includes('zabij bugi') && o.label === 'bug');
+  g.floors[0].enemies.forEach(e => { e.alive = false; });
+  g.qs.quests.bugi.status = 'ready';
+  assert(api.objectiveOf(g).text.includes('Oddaj quest'));
+  g.qs.quests.bugi = { status: 'done', progress: 5 };
+  g.player.weapon = false;
+  assert(api.objectiveOf(g).label === 'Pani Sekretarka');
+  talk(g, 'sekretarka', 'accept');
+  o = api.objectiveOf(g);
+  assert(o.label.includes('Schody') && o.text.includes('Pietro 2'), 'pieczatka na II pietrze: schody w gore');
+  assert(Math.abs(o.rel) <= Math.PI);
+  api.setFloor(g, 2);
+  assert.strictEqual(api.objectiveOf(g).label, 'Pieczątka');
+  g.qs.unlocked.push('drzwi-auli');
+  g.qs.quests.pieczatka = { status: 'done', progress: 1 }; g.qs.quests.liscik = { status: 'done', progress: 1 }; g.qs.quests.klucz = { status: 'done', progress: 1 };
+  o = api.objectiveOf(g);
+  assert(o.text.includes('Aula') || o.label.includes('Schody'));
 });
 
 console.log(`\n${passed} testow przeszlo`);
