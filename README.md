@@ -8,7 +8,7 @@ Projekt na Hacktoberfest Hack Day Gliwice 2026, temat Automation & Emulation.
 
 ![Bot przechodzi grę](docs/demo/bot-speedrun.gif)
 
-*Bot przechodzi całą grę w około 2,5 minuty: rozmowy, questy, schody, walki, finał. Nagranie przyspieszone 10x.*
+*Bot przechodzi całą grę w około 2,5 minuty: rozmowy, questy, schody, walki, finał. Nagranie przyspieszone 3x.*
 
 ## Zawartość
 
