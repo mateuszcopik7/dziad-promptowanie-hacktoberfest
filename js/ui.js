@@ -22,7 +22,7 @@ const slider = (label, key, min, max, step) => `
     <output>${FORMAT[key](settings[key])}</output></label>`;
 
 const stats = d => `
-  <p class="stats">Czas ${d.time} · Poziom gracza ${d.level} · Sale pokonane ${d.rooms}</p>`;
+  <p class="stats">Czas ${d.time} · Poziom gracza ${d.level} · Sale pokonane ${d.rooms}${d.secret ? ' · SEKRET 404 ODKRYTY' : ''}</p>`;
 
 const SCREENS = {
   main: () => `
@@ -40,6 +40,7 @@ const SCREENS = {
     <p class="text">Potwory uwięziły nauczycieli w salach. Żółta strzałka i mapa prowadzą do aktualnego celu; obiekty i rozmowy obsługujesz klawiszem E.</p>
     <p class="text">Wejdź w drzwi wskazanej sali: nauczyciel prosi o ratunek, a potem zaczyna się walka turowa: FIGHT, ACT, ITEM, MERCY. Potwora można pokonać albo oszczędzić.</p>
     <p class="text">Cel: uwolnij nauczycieli, zatrzymaj źródło ataku w auli, zdobądź klucz i opuść szkołę głównym wyjściem.</p>
+    <p class="text">Znaczniki nad NPC prowadzą też do opcjonalnych zadań pobocznych. Ukończenie całego łańcucha odkrywa ukrytą walkę i wyjątkową nagrodę.</p>
     <p class="text keys">${ACTIONS.map(([id, label]) => `${label}: <b>${keyLabel(settings.keys[id])}</b>`).join(' · ')}<br>
       E: rozmowa · F: latarka · H: kanapka · Esc: pauza · M: minimapa<br>
       W rozmowie i walce: strzałki, Z / Enter: potwierdź, X: wstecz</p>

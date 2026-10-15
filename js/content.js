@@ -3,15 +3,15 @@
 
 // --- NPC z questami (slot = id z mapa.json -> npc_slots) -------------------------------------
 const NPC_DEFS = {
-  woznik: { name: 'Woźny Heniek', slot: 'npc-0-02', color: '#7a4bd1', voice: { pitch: 140 }, quests: [],
+  woznik: { name: 'Woźny Heniek', slot: 'npc-0-02', color: '#7a4bd1', voice: { pitch: 140 }, quests: ['bugi'],
     idle: ['* Szkoła nie sprząta się sama.{p} A szkoda.'], idleRepeat: [['* Znowu Ty?{p} Pytaj, o co chcesz.'], ['* Idź już, {p}mam co robić.']] },
-  sekretarka: { name: 'Pani Sekretarka', slot: 'npc-0-01', color: '#d1684b', voice: { pitch: 360 }, quests: [],
+  sekretarka: { name: 'Pani Sekretarka', slot: 'npc-0-01', color: '#d1684b', voice: { pitch: 360 }, quests: ['pieczatka'],
     idle: ['* Wszystko wymaga pieczątki.{p} Wszystko.'], idleRepeat: [['* Pieczątka sama się nie znajdzie.']] },
-  uczen: { name: 'Uczeń z 3B', slot: 'npc-0-03', color: '#4bb0d1', voice: { pitch: 260 }, quests: ['ratunek'],
+  uczen: { name: 'Uczeń z 3B', slot: 'npc-0-03', color: '#4bb0d1', voice: { pitch: 260 }, quests: ['ratunek', 'liscik'],
     idle: ['* Coś jest nie tak...{p} W salach słychać hałas.'], idleRepeat: [['* Nauczyciele wciąż są w salach!']] },
   bibliotekarka: { name: 'Pani Bibliotekarka', slot: 'npc-1-05', color: '#4bd183', voice: { pitch: 380 }, quests: [],
     idle: ['* Ciii.{p} To biblioteka.{p} No, prawie.'], idleRepeat: [['* {shake}Ciii!{/shake}']] },
-  dyrektor: { name: 'Pani Dyrektor', slot: 'npc-3-03', color: '#d1b04b', voice: { pitch: 200 }, quests: [],
+  dyrektor: { name: 'Pani Dyrektor', slot: 'npc-3-03', color: '#d1b04b', voice: { pitch: 200 }, quests: ['klucz'],
     idle: ['* Słucham?'], idleRepeat: [['* Jeśli to nie pilne,{p} wróć później.']] },
 };
 
@@ -42,7 +42,7 @@ const QUEST_DEFS = {
     offerLines: ['* W szkole wysiadł prąd.{p} Uruchom główne bezpieczniki.'],
     activeLines: ['* Skrzynka jest po lewej stronie holu.{p} Podejdź i użyj {c:yellow}E{/c}.'],
     doneLines: ['* Zasilanie wróciło.'], reward: { xp: 25 } },
-  ratunek: { id: 'ratunek', title: 'Nauczyciele w pułapce', type: 'rescue', giver: 'uczen', count: 3, requires: ['zasilanie'],
+  ratunek: { id: 'ratunek', title: 'Nauczyciele w pułapce', type: 'rescue', giver: 'uczen', count: 3, rooms: ['f1-library', 'f2-214', 'f3-305'], requires: ['zasilanie'],
     offerLines: [{ text: '* Potwory zaatakowały szkołę!', face: 'sad' },
       '* Nauczyciele są uwięzieni w salach.{p} Słychać ich na każdym piętrze.',
       '* Wejdź do sal i pokonaj potwory.{p} Musimy ich uwolnić!'],
@@ -50,23 +50,25 @@ const QUEST_DEFS = {
     doneLines: [{ text: '* Udało się!{p} Nauczyciele są bezpieczni.', face: 'smile' },
       '* Atak idzie z {c:red}auli{/c}.{p} Odblokowaliśmy drzwi — zakończ to.'],
     reward: { xp: 120, unlock: ['drzwi-auli'] } },
-  /* Starsze poboczne zadania zostają w danych jako materiał do dalszej rozbudowy,
-     ale nie są już przypięte do NPC i nie blokują głównej fabuły. */
-  bugi: { id: 'bugi', title: 'Bugi w korytarzu', type: 'kill', giver: 'woznik', zone: 'f0-corridor', zoneName: 'Korytarz', count: 5,
-    offerLines: [{ text: '* Słuchaj,{p} mamy {c:red}problem{/c}.', face: 'sad' }, '* Po korytarzu biegają {shake}bugi{/shake}.{p} Gryzą kable i uczniów.',
-      '* Weź ten {c:yellow}pistolet{/c}.{p} Wyczyść korytarz i oddaj mi broń.'],
-    activeLines: ['* Jeszcze nie skończyłeś.{p} Bugi biegają po korytarzu.'], doneLines: [{ text: '* Czysto!{p} Dziękuję.', face: 'smile' }, '* Broń zabieram.{p} Szkoła ma swoje zasady.'],
-    onAccept: { weapon: true, ammo: 40, spawn: { floor: 0, zone: 'f0-corridor', type: 'bug', count: 5 } }, onDone: { weapon: false }, reward: { xp: 60 } },
-  pieczatka: { id: 'pieczatka', title: 'Zaginiona pieczątka', type: 'fetch', giver: 'sekretarka', item: 'pieczatka', itemName: 'Pieczątka (II piętro)', requires: ['bugi'],
-    offerLines: ['* Bez pieczątki nie wydam żadnego dokumentu.', '* Ktoś zostawił ją na {c:yellow}drugim piętrze{/c}.{p} Przyniesiesz?'],
+  // Opcjonalny lancuch poboczny prowadzi od korytarzowych bugow do sekretnego Archiwum 404.
+  bugi: { id: 'bugi', title: 'Dezinsekcja systemu', type: 'kill', giver: 'woznik', zone: 'f0-corridor', zoneName: 'Główny korytarz', count: 5, requires: ['zasilanie'],
+    offerLines: [{ text: '* Prąd wrócił,{p} ale z gniazdek wylazły {c:red}bugi{/c}.', face: 'sad' }, '* Pięć sztuk biega po głównym korytarzu i gryzie kable.',
+      '* Masz szkolny {c:yellow}debugger balistyczny{/c}.{p} LPM albo spacja. Bez pytań.'],
+    activeLines: ['* Jeszcze coś skrobie pod listwami.{p} Wyczyść cały główny korytarz.'], doneLines: [{ text: '* Czysto jak po audycie kuratorium.', face: 'smile' }, '* Debugger zatrzymaj.{p} Widzę, że się dogadujecie.'],
+    onAccept: { weapon: true, ammo: 40, spawn: { floor: 0, zone: 'f0-corridor', type: 'bug', count: 5 } }, reward: { xp: 80 } },
+  pieczatka: { id: 'pieczatka', title: 'Pieczęć absolutna', type: 'fetch', giver: 'sekretarka', item: 'pieczatka', itemName: 'Złota pieczątka (II piętro)', requires: ['bugi'],
+    offerLines: ['* Woźny mówi, że potrafisz odzyskiwać rzeczy niemożliwe.', '* Na drugim piętrze leży {c:yellow}złota pieczątka{/c}. Bez niej szkoła formalnie nie istnieje.'],
     activeLines: ['* Pieczątka.{p} Drugie piętro.{p} Szukaj przy ławkach.'], doneLines: [{ text: '* Jest!{p} Dziękuję.', face: 'smile' }], reward: { xp: 50 } },
-  liscik: { id: 'liscik', title: 'Liścik do bibliotekarki', type: 'talk', giver: 'uczen', to: 'bibliotekarka',
-    offerLines: ['* Mogłabyś zanieść ten liścik {p}Pani Bibliotekarce?', '* Ja się {shake}wstydzę{/shake}.'], deliverLines: ['* Liścik od ucznia?{p} Jakie to słodkie.'], deliverLabel: 'Podaj liścik',
-    activeLines: ['* Poszło?'], doneLines: ['* Super!{p} Jesteś wielki.'], reward: { xp: 40 } },
-  klucz: { id: 'klucz', title: 'Klucz do auli', type: 'talk', giver: 'dyrektor', to: 'woznik', requires: ['bugi', 'pieczatka', 'liscik'],
-    offerLines: [{ text: '* Słyszałam o Twoich wyczynach.', face: 'smile' }, '* W auli zalęgło się coś {c:red}dużego{/c}.{p} Klucz ma Woźny Heniek na parterze.', '* Idź do niego i powiedz,{p} że ja Cię przysyłam.'],
-    deliverLines: ['* Dyrektorka Cię przysłała?{p} No dobrze.{p} Masz {c:yellow}klucz do auli{/c}.'], deliverLabel: 'Powiedz o kluczu',
-    activeLines: ['* Woźny Heniek ma klucz.{p} Parter.'], doneLines: [{ text: '* Klucz masz.{p} Powodzenia w auli.', face: 'smile' }], reward: { xp: 100, unlock: ['drzwi-auli'] } },
+  liscik: { id: 'liscik', title: 'Zakazany liścik', type: 'talk', giver: 'uczen', to: 'bibliotekarka', requires: ['zasilanie'],
+    offerLines: ['* Mam sprawę poziomu {c:red}ściśle tajne{/c}.', '* Zanieś ten liścik Pani Bibliotekarce.{p} I absolutnie go nie czytaj.'],
+    deliverLines: ['* „Oddam książkę w poniedziałek”.{p} Termin minął trzy lata temu.', { text: '* Odważny chłopak.{p} Przekaż, że naliczam karę.', face: 'smile' }], deliverLabel: 'Przekaż tajny liścik',
+    activeLines: ['* Biblioteka, pierwsze piętro.{p} Nie czytałeś, prawda?'], doneLines: ['* Kara tylko trzy kanapki?{p} Uff. Dzięki!'], reward: { xp: 50 } },
+  klucz: { id: 'klucz', title: 'Protokół 404', type: 'talk', giver: 'dyrektor', to: 'woznik', requires: ['ratunek', 'bugi', 'pieczatka', 'liscik'],
+    offerLines: [{ text: '* Uratowani nauczyciele. Pieczęć odzyskana. Bugi usunięte.', face: 'smile' }, '* Została sprawa, której nie ma w żadnym dzienniku.', '* Poproś Woźnego o {c:yellow}Protokół 404{/c}.{p} On będzie wiedział.'],
+    deliverLines: ['* A więc Dyrektorka jednak pamięta.', '* Portiernia. Pierwsze drzwi przy korytarzu.{p} Kod brzmi: {c:yellow}NIE-ZNALEZIONO{/c}.'], deliverLabel: 'Zapytaj o Protokół 404',
+    activeLines: ['* Woźny Heniek pilnuje starego protokołu.{p} Znajdziesz go na parterze.'],
+    doneLines: [{ text: '* Portiernia została odblokowana.', face: 'smile' }, '* Jeśli wejdziesz, szkoła oficjalnie zaprzeczy, że Cię widziała.'],
+    reward: { xp: 150, unlock: ['sekret-portiernia'] } },
 };
 
 // Obiekty fabularne stojace w swiecie i obslugiwane klawiszem E.
@@ -84,6 +86,7 @@ const FOOD_PLACE = [[0, 20.5, 29.5], [0, 60.5, 26.5], [1, 20.5, 29.5], [1, 62.5,
 
 // --- sale z bossami -----------------------------------------------------------------------------
 const FINAL_ROOM = 'f1-aula';
+const SECRET_ROOM = 'f0-portiernia';
 const FINAL_BOSS = {
   name: 'Dyrektor Bugów', hp: 120, xp: 250, look: { color: '#2e2e3a', head: '#ff4d4d' }, turnTicks: 420,
   intro: '* Dyrektor Bugów blokuje scenę w auli.', check: '* DYREKTOR BUGÓW. Zbudowany z każdego błędu, który zgłosił uczeń.',
@@ -94,6 +97,19 @@ const FINAL_BOSS = {
     { id: 'thanks', label: 'Podziękuj', mercy: 25, text: '* Dziękujesz mu za wszystkie bugi.{p} Coś w nim pęka.' },
     { id: 'rage', label: 'Krzyknij', mercy: -30, text: '* Krzyczysz.{p} Pętla zaczyna się od nowa.' }],
   patterns: [{ type: 'wall', rate: 50, speed: 1.5, dmg: 7 }, { type: 'rain', rate: 5, speed: 1.9, dmg: 5 }, { type: 'side', rate: 14, speed: 2.4, dmg: 6 }],
+};
+
+const SECRET_BOSS = {
+  name: 'Archiwista 404', hp: 95, xp: 300, look: { color: '#171525', head: '#d1b04b' }, turnTicks: 390,
+  intro: '* Archiwista 404 wyłania się z dokumentacji, której nigdy nie było.',
+  check: '* ARCHIWISTA 404. Wie, kto naprawdę zjadł kanapkę z lodówki nauczycielskiej.',
+  killText: '* Archiwista zostaje trwale usunięty z rejestru.', spareText: '* Archiwista nadaje Ci uprawnienia administratora szkoły.',
+  flavor: ['* Teczki otwierają się same.', '* Pieczątki spadają z sufitu.', '* Archiwista cytuje regulamin z 1998 roku.'],
+  acts: [{ id: 'check', label: 'Sprawdź', mercy: 0 },
+    { id: 'stamp', label: 'Przystaw pieczęć', mercy: 35, text: '* ZŁOTA PIECZĘĆ.{p} Archiwista traci argumenty.' },
+    { id: 'audit', label: 'Zarządź audyt', mercy: 35, text: '* Prosisz o komplet dokumentów.{p} Archiwista zaczyna panikować.' },
+    { id: 'appendix', label: 'Zażądaj aneksu', mercy: 35, text: '* Aneks do aneksu.{p} System biurokracji zapętla się.' }],
+  patterns: [{ type: 'wall', rate: 55, speed: 1.7, dmg: 8 }, { type: 'rain', rate: 5, speed: 2.1, dmg: 6 }, { type: 'side', rate: 12, speed: 2.6, dmg: 7 }],
 };
 
 const BOSS_TEMPLATES = [
@@ -167,6 +183,13 @@ const hashStr = s => [...s].reduce((a, c) => (a * 31 + c.charCodeAt(0)) >>> 0, 7
 
 // spotkanie w sali: zalezy od strefy (sali) i pietra, deterministycznie
 function roomEncounter(zone, floorIdx) {
+  if (zone.id === SECRET_ROOM) {
+    return { id: zone.id, name: 'Tajna portiernia', secret: true,
+      teacher: { name: 'Woźny Heniek', voice: { pitch: 140 }, look: { color: '#7a4bd1' },
+        intro: ['* Tego pomieszczenia nie ma na planie szkoły.', '* Protokół 404 zadziałał.{p} Ale coś pilnuje archiwum.'],
+        outro: { killed: ['* No i po tajemnicy.{p} Weź złotą legitymację.'], spared: ['* Masz teraz uprawnienia administratora.{p} Weź złotą legitymację.'], lost: ['* Mówiłem, że tego pokoju nie ma.'] } },
+      boss: SECRET_BOSS, reward: { xp: 0, unlock: [] } };
+  }
   if (zone.id === FINAL_ROOM) {
     return { id: zone.id, name: zone.name, final: true, teacher: { name: 'Pani Dyrektor', voice: { pitch: 200 }, look: { color: '#d1b04b' }, portrait: teacherAsset('dyrektor1.png'),
       intro: [{ text: '* Dotarłeś.{p} Dobrze.', face: 'smile' }, '* To {c:red}on{/c} jest źródłem wszystkich bugów w szkole.', '* Pokonaj go.{p} Albo przekonaj.{p} Wybór należy do Ciebie.'],

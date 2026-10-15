@@ -46,7 +46,7 @@ function bumpQuests(qs, defs, type, matches) {
 }
 
 const onQuestKill = (qs, defs, zoneId) => bumpQuests(qs, defs, 'kill', d => d.zone === zoneId);
-const onQuestRoom = (qs, defs) => bumpQuests(qs, defs, 'rescue', () => true);
+const onQuestRoom = (qs, defs, zoneId) => bumpQuests(qs, defs, 'rescue', d => !d.rooms || d.rooms.includes(zoneId));
 
 // Przelacznik konczy zadanie od razu: po wlaczeniu pradu gracz nie musi wracac do zleceniodawcy.
 function onQuestSwitch(qs, defs, targetId) {

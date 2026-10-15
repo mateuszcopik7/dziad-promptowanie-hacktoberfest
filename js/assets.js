@@ -134,9 +134,21 @@ function externalSprite(path) {
       const c = document.createElement('canvas'); c.width = w; c.height = h;
       const x = c.getContext('2d'); x.imageSmoothingEnabled = false; x.drawImage(img, 0, 0, w, h);
       const rgba = x.getImageData(0, 0, w, h).data, data = new Uint32Array(w * h);
+      // Usuwamy tylko czern polaczona z krawedzia obrazu. Poprzedni prog jasnosci wycinal
+      // takze ciemne spodnie, wlosy i kontury postaci, przez co sylwetka wygladala na dziurawa.
+      const outside = new Uint8Array(w * h), stack = [];
+      const isBackground = i => rgba[i * 4 + 3] < 25 || Math.max(rgba[i * 4], rgba[i * 4 + 1], rgba[i * 4 + 2]) <= 6;
+      const seed = i => { if (!outside[i] && isBackground(i)) { outside[i] = 1; stack.push(i); } };
+      for (let xx = 0; xx < w; xx++) { seed(xx); seed((h - 1) * w + xx); }
+      for (let yy = 0; yy < h; yy++) { seed(yy * w); seed(yy * w + w - 1); }
+      while (stack.length) {
+        const i = stack.pop(), xx = i % w, yy = (i / w) | 0;
+        if (xx) seed(i - 1); if (xx + 1 < w) seed(i + 1);
+        if (yy) seed(i - w); if (yy + 1 < h) seed(i + w);
+      }
       for (let i = 0; i < data.length; i++) {
         const r = rgba[i * 4], g = rgba[i * 4 + 1], b = rgba[i * 4 + 2], a = rgba[i * 4 + 3];
-        if (a > 24 && r + g + b > 24) data[i] = rgb(r, g, b);
+        if (a > 24 && !outside[i]) data[i] = rgb(r, g, b);
       }
       entry.sprite = { w, h, data };
     };
@@ -190,6 +202,16 @@ const SPRITES = {
     '...yy...',
     '...yy...',
   ], { g: rgb(150, 150, 160), b: rgb(40, 90, 200), y: rgb(230, 200, 60) }),
+  pieczatka: makeSprite([
+    '...yyyy...',
+    '..yooooy..',
+    '..yooooy..',
+    '...yyyy...',
+    '....bb....',
+    '..bbbbbb..',
+    '.byyyyyyb.',
+    '.bbbbbbbb.',
+  ], { y: rgb(238, 195, 55), o: rgb(135, 75, 35), b: rgb(110, 45, 35) }),
   breaker: makeSprite([
     '..ssssss..',
     '.swwwwwws.',

@@ -181,12 +181,18 @@ function finishEncounter() {
   }
   p.hp = Math.max(1, r.hp);
   game.cleared.push(room.id);
-  if (!room.final) applyEffects(game, onQuestRoom(game.qs, QUEST_DEFS));
+  if (!room.final && !room.secret) applyEffects(game, onQuestRoom(game.qs, QUEST_DEFS, room.id));
   gainXp(game, r.xp);
   notify(game, `${room.name}: ${r.outcome === 'spared' ? 'oszczędzony' : 'pokonany'}, +${r.xp} XP`, 200);
   if (room.final) {
     if (!game.qs.items.includes('klucz-wyjscie')) game.qs.items.push('klucz-wyjscie');
     notify(game, 'ZDOBYTO KLUCZ DO WYJŚCIA — wróć na parter', 300);
+  }
+  if (room.secret && !game.qs.items.includes('zlota-legitymacja')) {
+    game.qs.items.push('zlota-legitymacja');
+    p.maxHp += 20; p.hp = p.maxHp;
+    notify(game, 'ZŁOTA LEGITYMACJA — maksymalne HP +20', 300);
+    game.events.push('levelup');
   }
   updateGameMusic(game);
   backToPlay();
@@ -199,7 +205,7 @@ function showEnd(which) {
   unlockPointer();
   if (which === 'victory') playMusic('victory');
   else if (which === 'dead') stopMusic();
-  showScreen(which, { time: fmtTime(game.ticks), level: game.player.level, rooms: game.cleared.length });
+  showScreen(which, { time: fmtTime(game.ticks), level: game.player.level, rooms: game.cleared.length, secret: game.qs.items.includes('zlota-legitymacja') });
 }
 
 function handleRequest(req) {

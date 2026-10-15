@@ -4,9 +4,9 @@ const fs = require('fs'), path = require('path'), vm = require('vm'), assert = r
 const ctx = vm.createContext({});
 const load = f => fs.readFileSync(path.join(__dirname, '../js', f), 'utf8');
 const src = ['world-data.js', 'world.js', 'content.js', 'quests.js', 'game.js', 'guide.js'].map(load).join('\n');
-vm.runInContext(src + `\nthis.api = { WORLD, NPC_DEFS, QUEST_DEFS, FOOD_PLACE, ITEM_PLACE, FINAL_ROOM, createGame, step, setFloor, useStairs, useInteractable, respawn,
+vm.runInContext(src + `\nthis.api = { WORLD, NPC_DEFS, QUEST_DEFS, FOOD_PLACE, ITEM_PLACE, FINAL_ROOM, SECRET_ROOM, createGame, step, setFloor, useStairs, useInteractable, respawn,
   doorStatus, applyEffects, gainXp, xpNeeded, castDist, hasLOS, roomEncounter, chooseDialog, dialogFor, isUnlocked, questStatus, stairsNear,
-  createQuestState, onQuestKill, onQuestRoom, wallAt, objectiveOf, doorCenter };`, ctx);
+  createQuestState, onQuestKill, onQuestItem, onQuestRoom, wallAt, objectiveOf, doorCenter };`, ctx);
 const api = ctx.api;
 const idle = { move: 0, strafe: 0, turn: 0, fire: false, interact: false, flashlight: false, heal: false };
 let passed = 0;
@@ -188,7 +188,7 @@ test('fabula: uczen zleca ratunek, trzy sale odblokowuja aule', () => {
   api.useInteractable(g, 'glowne-bezpieczniki');
   talk(g, 'uczen', 'accept');
   assert.strictEqual(api.questStatus(g.qs, api.QUEST_DEFS, 'ratunek'), 'active');
-  for (let i = 0; i < 3; i++) api.applyEffects(g, api.onQuestRoom(g.qs, api.QUEST_DEFS));
+  for (const room of ['f1-library', 'f2-214', 'f3-305']) api.applyEffects(g, api.onQuestRoom(g.qs, api.QUEST_DEFS, room));
   assert.strictEqual(api.questStatus(g.qs, api.QUEST_DEFS, 'ratunek'), 'ready');
   assert(!api.isUnlocked(g.qs, 'drzwi-auli'));
   talk(g, 'uczen', 'turnin');
@@ -203,6 +203,37 @@ test('final: bez klucza wyjscie jest zamkniete, klucz pozwala opuscic szkole', (
   g.qs.items.push('klucz-wyjscie');
   assert.strictEqual(api.useInteractable(g, 'wyjscie-szkoly'), 'escaped');
   assert.strictEqual(g.state, 'escaped');
+});
+
+test('side questy: debugger, pieczatka i liscik odblokowuja sekretnego bossa', () => {
+  const g = api.createGame();
+  api.useInteractable(g, 'glowne-bezpieczniki');
+  talk(g, 'uczen', 'accept');
+  for (const room of ['f1-library', 'f2-214', 'f3-305']) api.applyEffects(g, api.onQuestRoom(g.qs, api.QUEST_DEFS, room));
+  talk(g, 'uczen', 'turnin');
+
+  talk(g, 'woznik', 'accept');
+  assert(g.player.weapon && g.floors[0].enemies.filter(e => e.zone === 'f0-corridor').length === 5);
+  for (let i = 0; i < 5; i++) api.applyEffects(g, api.onQuestKill(g.qs, api.QUEST_DEFS, 'f0-corridor'));
+  talk(g, 'woznik', 'turnin');
+  assert(g.player.weapon, 'debugger zostaje jako nagroda');
+
+  talk(g, 'sekretarka', 'accept');
+  api.applyEffects(g, api.onQuestItem(g.qs, api.QUEST_DEFS, 'pieczatka'));
+  talk(g, 'sekretarka', 'turnin');
+  talk(g, 'uczen', 'accept');
+  talk(g, 'bibliotekarka', 'deliver');
+  talk(g, 'uczen', 'turnin');
+
+  talk(g, 'dyrektor', 'accept');
+  talk(g, 'woznik', 'deliver');
+  talk(g, 'dyrektor', 'turnin');
+  assert(api.isUnlocked(g.qs, 'sekret-portiernia'));
+  api.setFloor(g, 0);
+  const door = Object.values(W.floors[0].doors).find(d => d.zone === api.SECRET_ROOM);
+  assert.strictEqual(api.doorStatus(g, door).kind, 'encounter');
+  const secret = api.roomEncounter(W.floors[0].rooms[api.SECRET_ROOM], 0);
+  assert(secret.secret && secret.boss.name === 'Archiwista 404');
 });
 
 test('zdrowie: kanapka leczy po H, respawn wraca do ostatnich schodow z polowa HP', () => {
@@ -241,7 +272,7 @@ test('przewodnik fabuly: skrzynka, uczen, sale i aula', () => {
   talk(g, 'uczen', 'accept');
   o = api.objectiveOf(g);
   assert(o.text.includes('0/3') && o.text.includes('uwolnij nauczyciela'));
-  for (let i = 0; i < 3; i++) api.applyEffects(g, api.onQuestRoom(g.qs, api.QUEST_DEFS));
+  for (const room of ['f1-library', 'f2-214', 'f3-305']) api.applyEffects(g, api.onQuestRoom(g.qs, api.QUEST_DEFS, room));
   assert(api.objectiveOf(g).text.includes('Oddaj quest'));
   talk(g, 'uczen', 'turnin');
   g.qs.unlocked.push('drzwi-auli');

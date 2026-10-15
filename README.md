@@ -22,6 +22,8 @@ python3 -m http.server 8000
 - W salach występują nauczyciele z dostarczonego zestawu pixel-artów; każda sala ma przypisaną właściwą rolę, nazwisko, sylwetkę i portret dialogowy.
 - Dyrektor Bugów w auli zostawia klucz do głównego wyjścia. Dopiero powrót na parter i opuszczenie szkoły kończy grę.
 - Finał odbywa się w auli przeciwko Dyrektorowi Bugów.
+- Opcjonalny łańcuch poboczny obejmuje korytarzową dezinsekcję z bronią, odzyskanie złotej pieczątki i dostarczenie zakazanego liściku.
+- Ukończenie całego łańcucha odblokowuje Protokół 404, tajną portiernię, ukrytego bossa Archiwistę 404 i złotą legitymację dającą +20 maksymalnego HP.
 
 ## Sterowanie
 

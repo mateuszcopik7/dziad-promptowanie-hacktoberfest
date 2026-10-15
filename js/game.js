@@ -216,6 +216,10 @@ function updatePickups(g) {
 function doorStatus(g, door) {
   const zone = floorOf(g).rooms[door.zone];
   if (g.cleared.includes(zone.id)) return { kind: 'msg', text: zone.name + ': pusto. Tu już zrobiłeś porządek.' };
+  if (zone.id === SECRET_ROOM) {
+    if (!isUnlocked(g.qs, 'sekret-portiernia')) return { kind: 'msg', text: '001: Portiernia. Zamek oczekuje Protokołu 404.' };
+    return { kind: 'encounter', zone };
+  }
   if (zone.id === FINAL_ROOM && !isUnlocked(g.qs, 'drzwi-auli')) return { kind: 'msg', text: 'Aula zamknięta. Najpierw uwolnij nauczycieli i wróć do ucznia.' };
   if (!zone.boss_ready) return { kind: 'msg', text: (zone.number ? zone.number + ': ' : '') + zone.name + '. Zamknięte.' };
   if (zone.id !== FINAL_ROOM && !['active', 'ready', 'done'].includes(questStatus(g.qs, QUEST_DEFS, 'ratunek'))) {

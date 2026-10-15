@@ -45,7 +45,7 @@ function playThrough(maxTicks) {
       log.encounters++;
       if (r.outcome === 'lost') { api.respawn(g); continue; }
       p.hp = Math.max(1, r.hp); g.cleared.push(room.id);
-      if (!room.final) api.applyEffects(g, api.onQuestRoom(g.qs, api.QUEST_DEFS));
+      if (!room.final && !room.secret) api.applyEffects(g, api.onQuestRoom(g.qs, api.QUEST_DEFS, room.id));
       api.gainXp(g, r.xp);
       if (room.final && !g.qs.items.includes('klucz-wyjscie')) g.qs.items.push('klucz-wyjscie');
     }
