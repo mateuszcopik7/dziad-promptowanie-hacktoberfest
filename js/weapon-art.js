@@ -168,33 +168,36 @@
     ctx.globalAlpha = 1;
   }
 
+  // latarka trzymana w piesci: cylinder wystaje z gory dloni, palce i kciuk lapia raczke, przedramie siega dolu ekranu
   function drawFlashlight(ctx, W, H, on, bob, xPos) {
     ctx.save();
-    const x = Math.round(xPos === undefined ? W - 49 : xPos);        // xPos: gdzie trzymana, domyslnie prawa krawedz
+    const x = Math.round(xPos === undefined ? W - 49 : xPos);         // xPos: gdzie trzymana, domyslnie prawa krawedz
     const bounce = clamp(Number(bob) || 0, -3, 3);
-    const baseY = H + bounce;
-    const lensY = baseY - 79;
+    const baseY = H - 36 + bounce;                                    // ta sama wysokosc co piesc z drawHands
+    const lensY = baseY - 70;
 
     if (on === true) drawLightCone(ctx, x, lensY);
-    drawFlashlightHand(ctx, x, baseY);
 
-    // Uchwyt, cylinder i szeroka oprawa soczewki.
-    box(ctx, OUTLINE, x - 10, baseY - 53, 20, 34);
-    box(ctx, '#252d39', x - 8, baseY - 51, 16, 31);
-    box(ctx, '#465469', x - 5, baseY - 50, 10, 29);
-    box(ctx, '#65748a', x - 4, baseY - 48, 3, 25);
-    box(ctx, '#171c24', x - 8, baseY - 43, 16, 3);
-    box(ctx, '#171c24', x - 8, baseY - 33, 16, 3);
-    box(ctx, OUTLINE, x - 14, baseY - 71, 28, 20);
-    box(ctx, '#303947', x - 12, baseY - 69, 24, 17);
-    box(ctx, '#69788e', x - 9, baseY - 70, 18, 8);
-    box(ctx, OUTLINE, x - 10, lensY - 3, 20, 8);
-    box(ctx, on === true ? '#fff4bd' : '#1c2730', x - 8, lensY - 2, 16, 5);
-    if (on === true) box(ctx, '#ffffff', x - 4, lensY - 2, 8, 3);
+    // cylinder (rysowany pod dlonia): raczka, glowica i soczewka
+    box(ctx, OUTLINE, x - 9, baseY - 38, 18, 40);
+    box(ctx, '#252d39', x - 7, baseY - 36, 14, 38);
+    box(ctx, '#465469', x - 4, baseY - 35, 8, 36);
+    box(ctx, '#65748a', x - 3, baseY - 33, 2, 28);
+    box(ctx, OUTLINE, x - 15, baseY - 62, 30, 26);
+    box(ctx, '#303947', x - 13, baseY - 60, 26, 22);
+    box(ctx, '#69788e', x - 10, baseY - 59, 20, 8);
+    box(ctx, '#171c24', x - 13, baseY - 44, 26, 3);
+    box(ctx, OUTLINE, x - 12, lensY - 4, 24, 9);
+    box(ctx, on === true ? '#fff4bd' : '#1c2730', x - 10, lensY - 3, 20, 6);
+    if (on === true) box(ctx, '#ffffff', x - 5, lensY - 2, 10, 3);
+    box(ctx, OUTLINE, x + 9, baseY - 30, 7, 11);                      // wlacznik z boku
+    box(ctx, on === true ? '#4ad66d' : '#394354', x + 10, baseY - 29, 5, 8);
 
-    // Boczny wlacznik.
-    box(ctx, OUTLINE, x + 8, baseY - 48, 6, 10);
-    box(ctx, on === true ? '#4ad66d' : '#394354', x + 9, baseY - 47, 4, 7);
+    drawFist(ctx, x, baseY, 1, 1);                                    // piesc z przedramieniem zaslania dol raczki
+    box(ctx, OUTLINE, x - 10, baseY - 15, 20, 3);                     // zageszczenie cienia nad palcami
+    box(ctx, SKIN, x - 8, baseY - 13, 8, 9);                          // kciuk na cylindrze
+    box(ctx, SKIN_LIGHT, x - 7, baseY - 12, 3, 5);
+    box(ctx, OUTLINE, x - 9, baseY - 14, 1, 11);
     ctx.restore();
   }
 
