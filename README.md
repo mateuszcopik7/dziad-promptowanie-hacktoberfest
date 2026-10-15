@@ -4,7 +4,7 @@ Gra w stylu Doom (raycaster w czystym HTML/JS, bez buildu i bez zależności), k
 
 ## Uruchomienie
 
-Gra online: https://mateuszcopik7.github.io/dziad-promptowanie-hacktoberfest/
+Gra online (najnowszy build): https://mateuszcopik7.github.io/dziad-promptowanie-hacktoberfest/?v=202610151345
 
 Lokalnie otwórz `index.html` w przeglądarce albo uruchom serwer:
 
