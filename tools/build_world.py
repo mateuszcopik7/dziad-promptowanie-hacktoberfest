@@ -12,7 +12,22 @@ from pathlib import Path
 ROOT = Path(__file__).resolve().parent.parent
 
 
+import re
+
 BAND = 4                       # szerokosc korytarza po zwezeniu (komorki)
+
+
+def reserved_points(f):
+    """Punkty, ktorych nie wolno zablokowac filarami: sloty NPC oraz jedzenie i przedmioty z js/content.js."""
+    pts = [(n["x"] + 0.5, n["y"] + 0.5) for n in f["npc_slots"]]
+    text = (ROOT / "js" / "content.js").read_text(encoding="utf-8")
+    for fl, x, y in re.findall(r"\[(\d), ([\d.]+), ([\d.]+)\]", text.split("FOOD_PLACE =")[1].split("\n")[0]):
+        if int(fl) == f["level"]:
+            pts.append((float(x), float(y)))
+    for m in re.finditer(r"floor: (\d), x: ([\d.]+), y: ([\d.]+)", text.split("ITEM_PLACE =")[1].split("\n")[0]):
+        if int(m.group(1)) == f["level"]:
+            pts.append((float(m.group(2)), float(m.group(3))))
+    return pts
 
 
 def in_rect(z, x, y):
@@ -67,6 +82,16 @@ def shape_floor(f):
                 continue
             if (x + (0 if y == band_top else 6)) % 2 == 0:
                 decor.append({"kind": "bench", "x": x + 0.5, "y": y + off})
+    reserved = reserved_points(f)                          # filary co ok. 10 komorek, naprzemiennie z obu stron: lamia dluga linie wzroku
+    k = 0
+    for x in range(cx0 + 6, cx1 - 4, 10):
+        y = band_top if k % 2 == 0 else band_bot
+        k += 1
+        if any(in_rect(z, x, y) for z in halls) or any((xx, yy) in alcoves for xx in (x - 1, x, x + 1) for yy in (y - 1, y + 1)):
+            continue
+        if any(abs(px - (x + 0.5)) < 1.6 and abs(py - (y + 0.5)) < 1.6 for px, py in reserved + [(d["x"], d["y"]) for d in decor]):
+            continue
+        grid[y][x] = "#"
     for z in halls:                                        # kolorowe pufy i rosliny w holach
         mx, my = z["x"] + z["w"] / 2, z["y"] + z["h"] / 2
         for i, color in enumerate(("#f08a1c", "#e0457b", "#2f6fd6", "#d9302c", "#8a4fc0")):

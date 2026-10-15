@@ -80,8 +80,34 @@ const terrazzo = th => (x, y) => {
   return rgb(clamp(176 + o[0] + blot + j), clamp(170 + o[1] + blot + j), clamp(154 + o[2] + blot + j));
 };
 const ceilTex = th => makeTex((x, y) => { const j = jitter(x >> 2, y >> 2, 4); return rgb(clamp(th.ceil[0] + j), clamp(th.ceil[1] + j), clamp(th.ceil[2] + j)); });
-// gotowe zestawy dla czterech pieter: sciany, podloga, sufit, pasy
-const THEME_SETS = THEMES.map(th => ({ tex: makeThemeTex(th), floor: makeTex(terrazzo(th)), ceil: ceilTex(th), stripe: rgb(th.stripe[0], th.stripe[1], th.stripe[2]) }));
+// mipmapy (64, 32, 16, 8): z daleka tekstury sa usrednione zamiast migotac jak papka
+function mipChain(tex) {
+  const chain = [tex];
+  let size = 64, cur = tex;
+  while (size > 8) {
+    const n = size >> 1, nxt = new Uint32Array(n * n);
+    for (let y = 0; y < n; y++) {
+      for (let x = 0; x < n; x++) {
+        let r = 0, g = 0, b = 0;
+        for (const c of [cur[2 * y * size + 2 * x], cur[2 * y * size + 2 * x + 1], cur[(2 * y + 1) * size + 2 * x], cur[(2 * y + 1) * size + 2 * x + 1]]) {
+          r += c & 255; g += (c >> 8) & 255; b += (c >> 16) & 255;
+        }
+        nxt[y * n + x] = rgb(r >> 2, g >> 2, b >> 2);
+      }
+    }
+    chain.push(nxt); cur = nxt; size = n;
+  }
+  return chain;
+}
+
+// gotowe zestawy dla czterech pieter: sciany, podloga, sufit, pasy (z mipmapami)
+const THEME_SETS = THEMES.map(th => {
+  const tex = makeThemeTex(th), floor = makeTex(terrazzo(th)), ceil = ceilTex(th);
+  return {
+    tex, floor, ceil, stripe: rgb(th.stripe[0], th.stripe[1], th.stripe[2]),
+    mips: Object.fromEntries(Object.entries(tex).map(([k, v]) => [k, mipChain(v)])), floorMips: mipChain(floor), ceilMips: mipChain(ceil),
+  };
+});
 
 // bity sasiedztwa sciany dla kazdej komorki: 1 N, 2 E, 4 S, 8 W (ciemny pas wzdluz scian na podlodze), 16 poprzeczny pas
 const edgeMaskCache = new Map();
@@ -102,20 +128,22 @@ function edgeMask(world, floorIdx) {
 
 // kolor piksela podlogi: lastryko, pasy przy scianach, poprzeczne pasy, stopnie na schodach
 const STAIR_EDGE = rgb(70, 68, 66), LED_COLOR = rgb(255, 251, 246);
-function floorColor(set, mask, stair, u, v) {
+function floorColor(set, mask, stair, u, v, lvl) {
+  const size = 64 >> lvl, tex = set.floorMips[lvl], at = (v * size | 0) * size + (u * size | 0);
   if (stair) {
     const s = (u * 4) % 1;
-    return s < 0.14 ? STAIR_EDGE : set.floor[((v * 64) & 63) * 64 + ((u * 64) & 63)];
+    return s < 0.14 ? STAIR_EDGE : tex[at];
   }
   if (((mask & 1) && v < 0.16) || ((mask & 4) && v > 0.84) || ((mask & 2) && u > 0.84) || ((mask & 8) && u < 0.16)) return set.stripe;
   if ((mask & 16) && u > 0.35 && u < 0.65) return set.stripe;
-  return set.floor[((v * 64) & 63) * 64 + ((u * 64) & 63)];
+  return tex[at];
 }
 
 // kolor piksela sufitu i czy to panel LED (swieci, nie ciemnieje z odlegloscia)
-function ceilingColor(set, cx, cy, u, v) {
+function ceilingColor(set, cx, cy, u, v, lvl) {
   if (cx % 4 === 1 && cy % 3 === 1 && u > 0.12 && u < 0.88 && v > 0.3 && v < 0.7) return LED_COLOR;
-  return set.ceil[((v * 64) & 63) * 64 + ((u * 64) & 63)];
+  const size = 64 >> lvl;
+  return set.ceilMips[lvl][(v * size | 0) * size + (u * size | 0)];
 }
 
 // --- sprite'y dekoracji ---------------------------------------------------------------------------------

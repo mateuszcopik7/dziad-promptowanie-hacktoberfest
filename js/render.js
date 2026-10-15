@@ -16,9 +16,9 @@ let showMap = 1;                    // minimapa: 0 wylaczona, 1 mala, 2 duza (kl
 // oswietlenie: ciemny budynek, krotki zasieg widzenia (wszystko ginie w ciemnosci), latarka swieci dalej i jasniej w srodku ekranu
 const EXPOSURE = 0.78;              // jasnosc bez latarki
 const FLASH_EXPOSURE = 1.12;        // jasnosc w srodku stozka latarki
-const NEAR = 2;                     // do tej odleglosci pelna jasnosc
-const FAR = 13;                     // bez latarki wszystko dalej niz to jest czarne
-const FAR_FLASH = 22;               // zasieg w stozku latarki
+const NEAR = 1.5;                    // do tej odleglosci pelna jasnosc
+const FAR = 9;                      // bez latarki wszystko dalej niz to jest czarne
+const FAR_FLASH = 16;              // zasieg w stozku latarki
 const FOG = 0.03;
 
 // dopasowuje rozdzielczosc canvasu do rozmiaru okna (ostry tekst HUD na kazdym monitorze) i ustawia --u dla menu
@@ -70,14 +70,14 @@ function renderFloorCeil(g, cam) {
     const rowDist = 0.5 * H / (y - H / 2);
     const sx = rowDist * (rx1 - rx0) / W, sy = rowDist * (ry1 - ry0) / W;
     let fx = p.x + rowDist * rx0, fy = p.y + rowDist * ry0;
-    const fi = y * W, ci = (H - 1 - y) * W;
+    const fi = y * W, ci = (H - 1 - y) * W, lvl = rowDist < 2.5 ? 0 : rowDist < 5 ? 1 : rowDist < 8 ? 2 : 3;
     for (let x = 0; x < W; x++, fx += sx, fy += sy) {
       const sh = lightCol(x, rowDist);
       if (sh <= 0) { buf[fi + x] = 0xff000000; buf[ci + x] = 0xff000000; continue; }
       const cx = Math.floor(fx), cy = Math.floor(fy), u = fx - cx, v = fy - cy;
       const inside = cx >= 0 && cy >= 0 && cx < mw && cy < mh;
-      buf[fi + x] = shade(inside ? floorColor(set, mask[cy * mw + cx], f.stairCells[cy][cx], u, v) : set.stripe, sh);
-      const c = ceilingColor(set, cx, cy, u, v);
+      buf[fi + x] = shade(inside ? floorColor(set, mask[cy * mw + cx], f.stairCells[cy][cx], u, v, lvl) : set.stripe, sh);
+      const c = ceilingColor(set, cx, cy, u, v, lvl);
       buf[ci + x] = c === LED_COLOR ? shade(c, Math.min(256, sh * 2)) : shade(c, sh);        // panele LED swieca mocniej niz sufit
     }
   }
@@ -106,13 +106,13 @@ function renderWalls(g, cam) {
     wx -= Math.floor(wx);
     let tx = Math.floor(wx * 64);
     if ((side === 0 && rdx > 0) || (side === 1 && rdy < 0)) tx = 63 - tx;
-    const tex = THEME_SETS[g.floor].tex[hit], step = 64 / lineH;
+    const step = 64 / lineH, lvl = step < 1.2 ? 0 : step < 2.4 ? 1 : step < 4.8 ? 2 : 3, tex = THEME_SETS[g.floor].mips[hit][lvl], msize = 64 >> lvl;
     let tp = (y0 - H / 2 + lineH / 2) * step;
     const sh = (lightAt(g, x, dist) * (side ? 0.8 : 1)) | 0, top = H / 2 - lineH / 2;
     for (let y = y0; y <= y1; y++) {
       // cieniowanie przy suficie i podlodze (ambient occlusion): ciemniej tuz przy krawedziach sciany
       const t = (y - top) / lineH, e = Math.min(t, 1 - t), ao = e < 0.14 ? 0.72 + 0.28 * (e / 0.14) : 1;
-      buf[y * W + x] = shade(tex[(tp & 63) * 64 + tx], (sh * ao) | 0);
+      buf[y * W + x] = shade(tex[((tp & 63) >> lvl) * msize + (tx >> lvl)], (sh * ao) | 0);
       tp += step;
     }
   }
@@ -221,7 +221,9 @@ function drawFirstPerson(g) {
 }
 
 function hudText(str, x, y, color, align = 'left') {
-  sctx.textAlign = align; sctx.fillStyle = color; sctx.fillText(str, x, y);
+  sctx.textAlign = align; sctx.lineJoin = 'round'; sctx.lineWidth = 5; sctx.strokeStyle = 'rgba(0,0,0,.9)';
+  sctx.strokeText(str, x, y);                          // czarny obrys: czytelne na kazdym tle
+  sctx.fillStyle = color; sctx.fillText(str, x, y);
 }
 
 function hudBar(x, y, w, frac, color) {
@@ -232,14 +234,14 @@ function hudBar(x, y, w, frac, color) {
 // tekst na ciemnej plakietce: czytelny na kazdym tle
 function pill(str, x, y, color, size, align = 'center') {
   sctx.font = `bold ${size}px monospace`;
-  const w = sctx.measureText(str).width + 12, x0 = align === 'center' ? x - w / 2 : align === 'right' ? x - w : x;
-  sctx.fillStyle = 'rgba(8,10,18,.72)'; sctx.fillRect(x0, y - size, w, size + 7);
-  sctx.fillStyle = color; sctx.textAlign = 'left'; sctx.fillText(str, x0 + 6, y);
+  const w = sctx.measureText(str).width + 18, x0 = align === 'center' ? x - w / 2 : align === 'right' ? x - w : x;
+  sctx.fillStyle = 'rgba(6,8,16,.82)'; sctx.fillRect(x0, y - size - 2, w, size + 12);
+  sctx.fillStyle = color; sctx.textAlign = 'left'; sctx.fillText(str, x0 + 9, y + 2);
 }
 
 function drawMinimap(g, objective) {
   const big = showMap === 2, c = big ? 6 : 3, gw = g.grid[0].length * c, gh = g.grid.length * c, p = g.player;
-  const x0 = big ? Math.floor((W * SCALE - gw) / 2) : W * SCALE - gw - 10, y0 = big ? 70 : 76;
+  const x0 = big ? Math.floor((W * SCALE - gw) / 2) : W * SCALE - gw - 10, y0 = big ? 100 : 112;
   sctx.fillStyle = big ? 'rgba(0,0,0,.82)' : 'rgba(0,0,0,.6)'; sctx.fillRect(x0 - 4, y0 - 4, gw + 8, gh + 8);
   g.grid.forEach((row, y) => row.forEach((v, x) => {
     if (!v) return;
@@ -268,7 +270,7 @@ function drawMinimap(g, objective) {
   sctx.moveTo(x0 + p.x * c, y0 + p.y * c);
   sctx.lineTo(x0 + (p.x + Math.cos(p.angle) * 3) * c, y0 + (p.y + Math.sin(p.angle) * 3) * c);
   sctx.stroke();
-  sctx.font = '11px monospace';
+  sctx.font = 'bold 14px monospace';
   hudText(big ? 'MAPA: ' + g.world.floors[g.floor].name + '  (M: zmień rozmiar)' : g.world.floors[g.floor].name, x0, y0 - 8, '#ddd');
   if (big) {
     hudText('Ty', x0, y0 + gh + 18, '#4ad66d'); hudText('NPC', x0 + 40, y0 + gh + 18, '#7cc4ff');
@@ -286,71 +288,71 @@ function drawArrow(cx, cy, rel, size, color) {
 }
 
 function drawObjective(g, o) {
-  const bw = W * SCALE, pw = 560, px = (bw - pw) / 2, py = 10;
-  sctx.fillStyle = 'rgba(8,10,18,.78)'; sctx.fillRect(px, py, pw, 62);
-  sctx.strokeStyle = '#ffe600'; sctx.lineWidth = 2; sctx.strokeRect(px, py, pw, 62);
-  sctx.font = 'bold 11px monospace'; hudText('CEL', px + 70, py + 15, '#ffe600');
-  sctx.font = 'bold 15px monospace';
+  const bw = W * SCALE, pw = 640, ph = 84, px = (bw - pw) / 2, py = 10;
+  sctx.fillStyle = 'rgba(6,8,16,.88)'; sctx.fillRect(px, py, pw, ph);
+  sctx.strokeStyle = '#ffe600'; sctx.lineWidth = 3; sctx.strokeRect(px, py, pw, ph);
+  sctx.font = 'bold 14px monospace'; hudText('CEL', px + 92, py + 20, '#ffe600');
+  sctx.font = 'bold 19px monospace';
   const words = o.text.split(' '), lines = [''];
-  for (const w of words) { if ((lines[lines.length - 1] + w).length > 52) lines.push(''); lines[lines.length - 1] += w + ' '; }
-  lines.slice(0, 2).forEach((l, i) => hudText(l, px + 70, py + 33 + i * 18, '#fff'));
-  if (o.dist > 1.8) { drawArrow(px + 34, py + 31, o.rel, 18, '#ffe600'); sctx.font = '12px monospace'; hudText(Math.round(o.dist) + ' m', px + 34, py + 58, '#ffe600', 'center'); }
-  else { sctx.font = 'bold 12px monospace'; hudText('TU', px + 34, py + 36, '#4ad66d', 'center'); }
+  for (const w of words) { if ((lines[lines.length - 1] + w).length > 44) lines.push(''); lines[lines.length - 1] += w + ' '; }
+  lines.slice(0, 2).forEach((l, i) => hudText(l, px + 92, py + 45 + i * 24, '#fff'));
+  if (o.dist > 1.8) { drawArrow(px + 44, py + 38, o.rel, 24, '#ffe600'); sctx.font = 'bold 16px monospace'; hudText(Math.round(o.dist) + ' m', px + 44, py + 76, '#ffe600', 'center'); }
+  else { sctx.font = 'bold 18px monospace'; hudText('TU', px + 44, py + 46, '#4ad66d', 'center'); }
 }
 
 function drawQuestTracker(g) {
   const tr = trackedQuests(g.qs, QUEST_DEFS, g.npcDefs);
   if (!tr.length) return;
-  const y0 = 82, hgt = 32 + tr.length * 20;
-  sctx.fillStyle = 'rgba(8,10,18,.7)'; sctx.fillRect(10, y0, 330, hgt);
-  sctx.font = 'bold 13px monospace'; hudText('ZADANIA', 18, y0 + 18, '#ffe600');
-  sctx.font = '13px monospace';
-  tr.forEach((t, i) => hudText((t.ready ? '[ok] ' : '[ ] ') + t.title + ': ' + t.text, 18, y0 + 38 + i * 20, t.ready ? '#4ad66d' : '#fff'));
+  const y0 = 106, hgt = 44 + tr.length * 28;
+  sctx.fillStyle = 'rgba(6,8,16,.82)'; sctx.fillRect(10, y0, 430, hgt);
+  sctx.font = 'bold 16px monospace'; hudText('ZADANIA', 20, y0 + 24, '#ffe600');
+  sctx.font = 'bold 15px monospace';
+  tr.forEach((t, i) => hudText((t.ready ? '[ok] ' : '[ ] ') + t.title + ': ' + t.text, 20, y0 + 52 + i * 28, t.ready ? '#4ad66d' : '#fff'));
 }
 
 function drawHints(g) {
   if (g.ticks > 1800) return;
-  const a = Math.min(1, (1800 - g.ticks) / 300), y = H * SCALE - 96;
+  const a = Math.min(1, (1800 - g.ticks) / 300), y = H * SCALE - 160;
   sctx.globalAlpha = a;
-  sctx.fillStyle = 'rgba(8,10,18,.72)'; sctx.fillRect(10, y - 44, 372, 92);
-  sctx.font = 'bold 13px monospace';
-  hudText('STEROWANIE', 18, y - 26, '#ffe600'); sctx.font = '13px monospace';
-  hudText('WASD: ruch    mysz / strzałki: rozglądanie', 18, y - 8, '#fff');
-  hudText('E: rozmowa    F: latarka    H: kanapka', 18, y + 10, '#fff');
-  hudText('M: mapa    Esc: pauza    Wejdź w drzwi sali: walka', 18, y + 28, '#fff');
+  sctx.fillStyle = 'rgba(6,8,16,.82)'; sctx.fillRect(10, y - 34, 470, 120);
+  sctx.font = 'bold 16px monospace'; hudText('STEROWANIE', 20, y - 8, '#ffe600');
+  sctx.font = 'bold 15px monospace';
+  hudText('WASD: ruch     mysz / strzałki: rozglądanie', 20, y + 18, '#fff');
+  hudText('E: rozmowa     F: latarka     H: kanapka', 20, y + 42, '#fff');
+  hudText('M: mapa        Esc: pauza', 20, y + 66, '#fff');
   sctx.globalAlpha = 1;
 }
 
 function drawHud(g) {
-  const p = g.player, bw = W * SCALE, y = H * SCALE - 44, o = objectiveOf(g);
+  const p = g.player, bw = W * SCALE, bar = 56, y = H * SCALE - bar, o = objectiveOf(g);
   if (g.hurt > 0) { sctx.fillStyle = `rgba(200,0,0,${g.hurt / 20})`; sctx.fillRect(0, 0, bw, H * SCALE); }
-  // etykiety w swiecie: drzwi, schody, imiona NPC
+  // etykiety w swiecie: drzwi, schody, imiona NPC (min. 15 px, rosna przy zblizaniu)
   for (const l of labels) {
-    const size = Math.max(11, Math.min(19, Math.round(28 - l.ty * 1.3))), sx = l.x * SCALE, sy = l.y * SCALE;
-    pill(l.text, sx, sy - size - 4, '#fff', size);
-    pill(l.sub, sx, sy - 2, l.color, Math.max(10, size - 2));
+    const size = Math.max(15, Math.min(24, Math.round(34 - l.ty * 1.6))), sx = l.x * SCALE, sy = l.y * SCALE;
+    pill(l.text, sx, sy - size - 8, '#fff', size);
+    pill(l.sub, sx, sy - 2, l.color, Math.max(14, size - 3));
   }
   for (const m of markers) {
-    if (m.name && m.ty < 7) pill(m.name, m.x * SCALE, m.y * SCALE - (m.ch ? 34 : 4), '#fff', 13);
-    if (m.ch) { sctx.font = 'bold 30px monospace'; sctx.lineWidth = 4; sctx.strokeStyle = '#000'; sctx.textAlign = 'center'; sctx.strokeText(m.ch, m.x * SCALE, m.y * SCALE - 4); hudText(m.ch, m.x * SCALE, m.y * SCALE - 4, m.ch === '?' ? '#4ad66d' : m.ch === '>' ? '#7cc4ff' : '#ffe600', 'center'); }
+    if (m.name && m.ty < 6) pill(m.name, m.x * SCALE, m.y * SCALE - (m.ch ? 44 : 6), '#fff', 17);
+    if (m.ch) { sctx.font = 'bold 38px monospace'; hudText(m.ch, m.x * SCALE, m.y * SCALE - 4, m.ch === '?' ? '#4ad66d' : m.ch === '>' ? '#7cc4ff' : '#ffe600', 'center'); }
   }
   // pasek statusu
-  sctx.fillStyle = 'rgba(0,0,0,.72)'; sctx.fillRect(0, y, bw, 44);
+  sctx.fillStyle = 'rgba(0,0,0,.78)'; sctx.fillRect(0, y, bw, bar);
+  sctx.font = 'bold 22px monospace';
+  hudText('HP ' + p.hp + '/' + p.maxHp, 16, y + 25, '#ff6b6b');
+  hudBar(16, y + 36, 180, p.hp / p.maxHp, '#ff6b6b');
+  hudText('LVL ' + p.level, 230, y + 25, '#7cc4ff');
+  hudBar(230, y + 36, 150, p.xp / xpNeeded(p.level), '#7cc4ff');
+  hudText('KANAPKI ' + g.food, 420, y + 25, '#ffd166');
+  if (p.weapon) hudText('AMMO ' + p.ammo, 620, y + 25, '#ffd166');
   sctx.font = 'bold 18px monospace';
-  hudText('HP ' + p.hp + '/' + p.maxHp, 16, y + 20, '#ff6b6b');
-  hudBar(16, y + 28, 150, p.hp / p.maxHp, '#ff6b6b');
-  hudText('LVL ' + p.level, 200, y + 20, '#7cc4ff');
-  hudBar(200, y + 28, 130, p.xp / xpNeeded(p.level), '#7cc4ff');
-  hudText('KANAPKI ' + g.food, 360, y + 20, '#ffd166');
-  if (p.weapon) hudText('AMMO ' + p.ammo, 540, y + 20, '#ffd166');
+  hudText(g.world.floors[g.floor].name.toUpperCase(), bw - 16, y + 24, '#fff', 'right');
   sctx.font = 'bold 14px monospace';
-  hudText(g.world.floors[g.floor].name.toUpperCase(), bw - 16, y + 20, '#fff', 'right');
-  sctx.font = '12px monospace';
-  hudText(p.flashlight ? 'F: latarka ON' : 'F: latarka', bw - 16, y + 38, p.flashlight ? '#ffe9a8' : '#888', 'right');
-  if (g.prompt) pill(g.prompt, bw / 2, y - 18, '#fff', 17);
+  hudText(p.flashlight ? 'F: latarka ON' : 'F: latarka', bw - 16, y + 46, p.flashlight ? '#ffe9a8' : '#aaa', 'right');
+  if (g.prompt) pill(g.prompt, bw / 2, y - 24, '#fff', 21);
   if (g.msgT > 0) {
     sctx.globalAlpha = Math.min(1, g.msgT / 30);
-    pill(g.msg, bw / 2, 140, '#7cc4ff', 28);
+    pill(g.msg, bw / 2, 190, '#7cc4ff', 32);
     sctx.globalAlpha = 1;
   }
   drawObjective(g, o);
