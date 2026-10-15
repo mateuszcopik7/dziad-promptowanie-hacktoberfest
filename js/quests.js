@@ -23,7 +23,7 @@ function idleLines(qs, npc, npcId) {
   return talks > 0 && repeat.length ? repeat[Math.min(talks - 1, repeat.length - 1)] : npc.idle;
 }
 
-const questGoal = def => (def.type === 'kill' ? def.count : 1);
+const questGoal = def => (['kill', 'rescue'].includes(def.type) ? def.count : 1);
 
 // locked | available | active | ready | done
 function questStatus(qs, defs, id) {
@@ -46,6 +46,25 @@ function bumpQuests(qs, defs, type, matches) {
 }
 
 const onQuestKill = (qs, defs, zoneId) => bumpQuests(qs, defs, 'kill', d => d.zone === zoneId);
+const onQuestRoom = (qs, defs) => bumpQuests(qs, defs, 'rescue', () => true);
+
+// Przelacznik konczy zadanie od razu: po wlaczeniu pradu gracz nie musi wracac do zleceniodawcy.
+function onQuestSwitch(qs, defs, targetId) {
+  const effects = [];
+  for (const def of Object.values(defs)) {
+    const q = qs.quests[def.id];
+    if (!q || q.status !== 'active' || def.type !== 'switch' || def.target !== targetId) continue;
+    q.progress = 1; q.status = 'done';
+    effects.push({ type: 'done', quest: def.id });
+    const reward = def.reward || {};
+    if (reward.xp) effects.push({ type: 'xp', amount: reward.xp });
+    for (const id of reward.unlock || []) {
+      if (!qs.unlocked.includes(id)) qs.unlocked.push(id);
+      effects.push({ type: 'unlock', id });
+    }
+  }
+  return effects;
+}
 
 function onQuestItem(qs, defs, itemId) {
   if (!qs.items.includes(itemId)) qs.items.push(itemId);
@@ -127,6 +146,8 @@ function trackedQuests(qs, defs, npcs) {
       const text = q.status === 'ready' ? 'Wróć do: ' + npcs[d.giver].name
         : d.type === 'kill' ? `${d.zoneName || d.zone}: ${q.progress}/${d.count}`
         : d.type === 'fetch' ? 'Znajdź: ' + d.itemName
+        : d.type === 'switch' ? 'Uruchom: ' + d.targetName
+        : d.type === 'rescue' ? `Uwolnieni nauczyciele: ${q.progress}/${d.count}`
         : 'Porozmawiaj z: ' + npcs[d.to].name;
       return { id: d.id, title: d.title, text, ready: q.status === 'ready' };
     });

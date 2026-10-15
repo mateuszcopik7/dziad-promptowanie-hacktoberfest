@@ -14,12 +14,12 @@ python3 -m http.server 8000
 
 ## Przebieg gry
 
-- Zaczynasz w holu głównym z samymi rękami i latarką pod `F`.
-- Na korytarzach stoją NPC (fikcyjni uczniowie i pracownicy). Rozmowa pod `E`, nad głową mają `!` (nowy quest) albo `?` (do oddania).
-- Quest ze strzelaniem daje pistolet i wypuszcza bugi na korytarz. Po oddaniu questa broń znika.
-- Piętra łączą klatki schodowe. Wejście na schody otwiera wybór: dokąd idziesz.
-- Wejście w drzwi sali: ekran gaśnie, nauczyciel prosi o pomoc, potem walka turowa jak w Undertale: `FIGHT` (pasek timingu), `ACT`, `ITEM`, `MERCY`. Boss ginie albo można go oszczędzić, gdy nastrój dojdzie do 100.
-- Cel: odblokować aulę (łańcuch questów) i pokonać Dyrektora Bugów.
+- Pietrzyk-Piotrowska wita gracza w holu i prowadzi pełny tutorial sterowania.
+- Szkoła zaczyna bez prądu. Pierwsza misja prowadzi do interaktywnej skrzynki bezpieczników; latarka pod `F` działa awaryjnie.
+- Po przywróceniu zasilania uczeń na parterze alarmuje, że potwory zaatakowały szkołę, a nauczyciele są uwięzieni w salach.
+- Żółta strzałka prowadzi do kolejnych sal. Po wejściu nauczyciel prosi o ratunek, a potem zaczyna się walka turowa jak w Undertale: `FIGHT`, `ACT`, `ITEM`, `MERCY`.
+- Każde zwycięstwo lub oszczędzenie potwora uwalnia nauczyciela. Po akcji ratunkowej uczeń przekazuje klucz do auli.
+- Finał odbywa się w auli przeciwko Dyrektorowi Bugów.
 
 ## Sterowanie
 
@@ -69,7 +69,7 @@ python3 mapa/sprawdz.py
 
 W menu gry jest przycisk **Bot przechodzi grę**: ta sama logika działa wtedy w przeglądarce (`js/autoplay.js`) i gra sama od początku do finału. Esc przejmuje sterowanie. Poniżej bot zewnętrzny w Pythonie (Playwright).
 
-Bot przechodzi całą grę sam, w prawdziwym Chromium przez Playwright. Czyta stan z `window.raid.state()` i `window.raid.world()`, planuje trasę (BFS po siatce piętra, schody między piętrami), strzela i chodzi przez `window.raid.setIntent()`, a dialogi i walki obsługuje klawiszami. Przebieg: 4 questy po kolei (Woźny Heniek, Sekretarka, Uczeń i Bibliotekarka, Dyrektorka), potem aula i walka z Dyrektorem Bugów: ACT do pełnego nastroju, potem MERCY. Pociski omija planerem, który sprawdza bezpieczne punkty w pudełku na kilkadziesiąt klatek do przodu. Cała gra w około 2 minuty przy `--speed 3`.
+Bot przechodzi całą grę sam, w prawdziwym Chromium przez Playwright. Czyta stan z `window.raid.state()` i `window.raid.world()`, planuje trasę (BFS po siatce piętra, schody między piętrami), obsługuje skrzynkę bezpieczników, dialog alarmowy ucznia i akcję ratowania nauczycieli. W walkach używa ACT do pełnego nastroju, a potem MERCY. Pociski omija planerem, który sprawdza bezpieczne punkty w pudełku na kilkadziesiąt klatek do przodu.
 
 ```bash
 python3 -m venv .venv && .venv/bin/pip install -r bot/requirements.txt && .venv/bin/playwright install chromium

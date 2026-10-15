@@ -4,9 +4,9 @@ const fs = require('fs'), path = require('path'), vm = require('vm'), assert = r
 const ctx = vm.createContext({});
 const load = f => fs.readFileSync(path.join(__dirname, '../js', f), 'utf8');
 const src = ['world-data.js', 'world.js', 'content.js', 'quests.js', 'game.js', 'guide.js'].map(load).join('\n');
-vm.runInContext(src + `\nthis.api = { WORLD, NPC_DEFS, QUEST_DEFS, FOOD_PLACE, ITEM_PLACE, FINAL_ROOM, createGame, step, setFloor, useStairs, respawn,
+vm.runInContext(src + `\nthis.api = { WORLD, NPC_DEFS, QUEST_DEFS, FOOD_PLACE, ITEM_PLACE, FINAL_ROOM, createGame, step, setFloor, useStairs, useInteractable, respawn,
   doorStatus, applyEffects, gainXp, xpNeeded, castDist, hasLOS, roomEncounter, chooseDialog, dialogFor, isUnlocked, questStatus, stairsNear,
-  createQuestState, onQuestKill, wallAt, objectiveOf, doorCenter };`, ctx);
+  createQuestState, onQuestKill, onQuestRoom, wallAt, objectiveOf, doorCenter };`, ctx);
 const api = ctx.api;
 const idle = { move: 0, strafe: 0, turn: 0, fire: false, interact: false, flashlight: false, heal: false };
 let passed = 0;
@@ -63,6 +63,7 @@ test('osiagalnosc: wszystkie drzwi, NPC, jedzenie i przedmioty da sie dotknac z 
   g.npcs.forEach(n => assert(seen[n.floor][Math.floor(n.y)][Math.floor(n.x)], 'NPC ' + n.id));
   api.FOOD_PLACE.forEach(([fl, x, y]) => assert(seen[fl][Math.floor(y)][Math.floor(x)], `jedzenie ${fl} ${x},${y}`));
   api.ITEM_PLACE.forEach(i => assert(seen[i.floor][Math.floor(i.y)][Math.floor(i.x)], 'przedmiot ' + i.item));
+  g.interactables.forEach(i => assert(seen[i.floor][Math.floor(i.y)][Math.floor(i.x)], 'obiekt ' + i.id));
 });
 
 test('NPC z questami stoja na swoich slotach, nikt nie dzieli komorki', () => {
@@ -121,6 +122,8 @@ test('NPC w zasiegu: podpowiedz i prosba o rozmowe po E', () => {
 
 test('uderzenie w drzwi zglasza spotkanie, w drzwi zamkniete - komunikat', () => {
   const g = api.createGame();
+  g.qs.quests.zasilanie = { status: 'done', progress: 1 };
+  g.qs.quests.ratunek = { status: 'active', progress: 0 };
   api.setFloor(g, 1);
   const door = Object.values(W.floors[1].doors).find(d => d.zone === 'f1-library');
   const [cx, cy] = door.cells[0];
@@ -160,47 +163,28 @@ test('klatka schodowa: wejscie zglasza opcje pieter, useStairs zmienia pietro i 
 // pomocnicze: przyjmij quest u NPC
 const talk = (g, npc, option) => api.applyEffects(g, api.chooseDialog(g.qs, api.QUEST_DEFS, g.npcDefs, npc, option));
 
-test('quest ze strzelaniem: bron dopiero po przyjeciu, mobki pojawiaja sie w korytarzu, bron znika po oddaniu', () => {
+test('fabula: start bez pradu, skrzynka konczy pierwsza misje i odblokowuje alarm ucznia', () => {
   const g = api.createGame();
-  assert.strictEqual(g.floors[0].enemies.length, 0);
-  talk(g, 'woznik', 'accept');
-  assert.strictEqual(g.player.weapon, true);
-  assert.strictEqual(g.player.ammo, 40);
-  assert.strictEqual(g.floors[0].enemies.length, 5);
-  assert(g.floors[0].enemies.every(e => e.zone === 'f0-corridor' && api.wallAt(g.grid, Math.floor(e.x), Math.floor(e.y)) === 0));
-  // zabij wszystkich: ustaw przed kazdym w linii strzalu
-  for (const e of g.floors[0].enemies) {
-    Object.assign(g.player, { x: e.x - 3, y: e.y, angle: 0, hp: 60 });
-    if (api.wallAt(g.grid, Math.floor(g.player.x), Math.floor(g.player.y))) Object.assign(g.player, { x: e.x + 3, angle: Math.PI });
-    for (let i = 0; i < 120 && e.alive; i++) api.step(g, { ...idle, fire: true });
-    assert(!e.alive);
-  }
-  assert.strictEqual(api.questStatus(g.qs, api.QUEST_DEFS, 'bugi'), 'ready');
-  const xpBefore = g.player.xp + g.player.level * 1000;
-  talk(g, 'woznik', 'turnin');
-  assert.strictEqual(g.player.weapon, false);
-  assert(g.player.xp + g.player.level * 1000 > xpBefore);
-  assert.strictEqual(api.questStatus(g.qs, api.QUEST_DEFS, 'bugi'), 'done');
+  assert.strictEqual(g.power, false);
+  assert.strictEqual(api.questStatus(g.qs, api.QUEST_DEFS, 'zasilanie'), 'active');
+  assert.strictEqual(api.questStatus(g.qs, api.QUEST_DEFS, 'ratunek'), 'locked');
+  api.useInteractable(g, 'glowne-bezpieczniki');
+  assert.strictEqual(g.power, true);
+  assert.strictEqual(g.interactables[0].used, true);
+  assert.strictEqual(api.questStatus(g.qs, api.QUEST_DEFS, 'zasilanie'), 'done');
+  assert.strictEqual(api.questStatus(g.qs, api.QUEST_DEFS, 'ratunek'), 'available');
+  assert.strictEqual(api.dialogFor(g.qs, api.QUEST_DEFS, g.npcDefs, 'uczen').kind, 'offer');
 });
 
-test('lancuch: pieczatka, liscik i klucz odblokowuja aule', () => {
+test('fabula: uczen zleca ratunek, trzy sale odblokowuja aule', () => {
   const g = api.createGame();
-  g.qs.quests.bugi = { status: 'done', progress: 5 };
-  talk(g, 'sekretarka', 'accept');
-  api.setFloor(g, 2);
-  const it = api.ITEM_PLACE[0];
-  Object.assign(g.player, { x: it.x, y: it.y });
-  api.step(g, idle);
-  assert.strictEqual(api.questStatus(g.qs, api.QUEST_DEFS, 'pieczatka'), 'ready');
-  talk(g, 'sekretarka', 'turnin');
+  api.useInteractable(g, 'glowne-bezpieczniki');
   talk(g, 'uczen', 'accept');
-  talk(g, 'bibliotekarka', 'deliver');
-  talk(g, 'uczen', 'turnin');
-  assert.strictEqual(api.questStatus(g.qs, api.QUEST_DEFS, 'klucz'), 'available');
-  talk(g, 'dyrektor', 'accept');
-  talk(g, 'woznik', 'deliver');
+  assert.strictEqual(api.questStatus(g.qs, api.QUEST_DEFS, 'ratunek'), 'active');
+  for (let i = 0; i < 3; i++) api.applyEffects(g, api.onQuestRoom(g.qs, api.QUEST_DEFS));
+  assert.strictEqual(api.questStatus(g.qs, api.QUEST_DEFS, 'ratunek'), 'ready');
   assert(!api.isUnlocked(g.qs, 'drzwi-auli'));
-  talk(g, 'dyrektor', 'turnin');
+  talk(g, 'uczen', 'turnin');
   assert(api.isUnlocked(g.qs, 'drzwi-auli'));
 });
 
@@ -231,27 +215,19 @@ test('XP daje poziomy, wiecej HP i leczenie', () => {
   assert.strictEqual(g.player.hp, 40);
 });
 
-test('przewodnik: kolejne cele od Woznego po aule, miedzy pietrami przez schody', () => {
+test('przewodnik fabuly: skrzynka, uczen, sale i aula', () => {
   const g = api.createGame();
   let o = api.objectiveOf(g);
-  assert(o.text.includes('Heniek') && o.floor === 0, 'start: porozmawiaj z Woznym');
-  talk(g, 'woznik', 'accept');
+  assert(o.text.includes('skrzynkę') && o.floor === 0);
+  api.useInteractable(g, 'glowne-bezpieczniki');
+  assert.strictEqual(api.objectiveOf(g).label, 'Uczeń z 3B');
+  talk(g, 'uczen', 'accept');
   o = api.objectiveOf(g);
-  assert(o.text.includes('zabij bugi') && o.label === 'bug');
-  g.floors[0].enemies.forEach(e => { e.alive = false; });
-  g.qs.quests.bugi.status = 'ready';
+  assert(o.text.includes('0/3') && o.text.includes('uwolnij nauczyciela'));
+  for (let i = 0; i < 3; i++) api.applyEffects(g, api.onQuestRoom(g.qs, api.QUEST_DEFS));
   assert(api.objectiveOf(g).text.includes('Oddaj quest'));
-  g.qs.quests.bugi = { status: 'done', progress: 5 };
-  g.player.weapon = false;
-  assert(api.objectiveOf(g).label === 'Pani Sekretarka');
-  talk(g, 'sekretarka', 'accept');
-  o = api.objectiveOf(g);
-  assert(o.label.includes('Schody') && o.text.includes('Pietro 2'), 'pieczatka na II pietrze: schody w gore');
-  assert(Math.abs(o.rel) <= Math.PI);
-  api.setFloor(g, 2);
-  assert.strictEqual(api.objectiveOf(g).label, 'Pieczątka');
+  talk(g, 'uczen', 'turnin');
   g.qs.unlocked.push('drzwi-auli');
-  g.qs.quests.pieczatka = { status: 'done', progress: 1 }; g.qs.quests.liscik = { status: 'done', progress: 1 }; g.qs.quests.klucz = { status: 'done', progress: 1 };
   o = api.objectiveOf(g);
   assert(o.text.includes('Aula') || o.label.includes('Schody'));
 });

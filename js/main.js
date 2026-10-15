@@ -110,19 +110,23 @@ function startDialogue(node, color, voice, onDone) {
   unlockPointer();
 }
 
-// scenka na starcie: Przewodnik uczy sterowania (klawisze z ustawien gracza)
+// Scenka na starcie: Pietrzyk-Piotrowska prowadzi tutorial i rozpoczyna fabule.
 function startIntro() {
   const k = settings.keys, y = s => `{c:yellow}${s}{/c}`;
   const lines = [
-    '* Hej!{p} Jestem ' + y('Przewodnik') + '.{p} Pokażę Ci, jak się tu chodzi.',
-    `* Ruch: ${y([k.forward, k.left, k.back, k.right].map(keyLabel).join(' '))}.{p} Rozglądasz się ${y('myszą')} albo ${y(keyLabel(k.turnLeft) + ' ' + keyLabel(k.turnRight))}.`,
-    `* ${y('E')}: rozmowa.{p} ${y('F')}: latarka.{p} ${y('H')}: kanapka leczy.`,
-    `* ${y('M')}: mapa.{p} ${y('Esc')}: pauza.`,
-    `* Wejdź w drzwi sali, a zacznie się walka.{p} W walce: strzałki i ${y('Z')}.`,
-    '* Żółta strzałka u góry pokazuje cel.{p} Zacznij od ' + y('Woźnego Heńka') + '.{p} Powodzenia!',
+    { text: '* Stój!{p} Zanim wejdziesz dalej — krótki tutorial.', face: 'sad' },
+    '* Jestem ' + y('Pietrzyk-Piotrowska') + '.{p} Przeprowadzę Cię przez podstawy.',
+    `* Poruszasz się: ${y([k.forward, k.left, k.back, k.right].map(keyLabel).join(' '))}.{p} Rozglądasz się ${y('myszą')} albo ${y(keyLabel(k.turnLeft) + ' ' + keyLabel(k.turnRight))}.`,
+    `* ${y('E')} służy do rozmowy i używania obiektów.{p} ${y('F')} włącza latarkę, a ${y('H')} zjada leczącą kanapkę.`,
+    `* Pod ${y('M')} masz mapę, a ${y('Esc')} zatrzymuje grę.{p} Żółta strzałka zawsze wskazuje aktualny cel.`,
+    { text: '* I od razu mamy problem.{p} W całej szkole wysiadł prąd.', face: 'sad' },
+    `* Pierwsza misja: idź do ${y('skrzynki bezpieczników')} po lewej stronie holu i użyj ${y('E')}.`,
+    '* Bez paniki.{p} Latarka działa awaryjnie.{p} Ruszaj za żółtą strzałką!',
   ];
   const def = game.npcDefs[GUIDE_NPC.id];
-  startDialogue({ npc: def.name, lines, options: [{ id: 'ok', label: 'Ruszam' }] }, def.color, def.voice, null);
+  startDialogue({ npc: def.name, lines, options: [{ id: 'ok', label: 'Włączam prąd' }] }, def.color, def.voice, () => {
+    notify(game, 'NOWA MISJA: uruchom główne bezpieczniki', 220);
+  });
 }
 
 function talkToNpc(id) {
@@ -162,6 +166,7 @@ function finishEncounter() {
   }
   p.hp = Math.max(1, r.hp);
   game.cleared.push(room.id);
+  if (!room.final) applyEffects(game, onQuestRoom(game.qs, QUEST_DEFS));
   gainXp(game, r.xp);
   notify(game, `${room.name}: ${r.outcome === 'spared' ? 'oszczędzony' : 'pokonany'}, +${r.xp} XP`, 200);
   if (room.final) return showEnd('victory');
@@ -178,6 +183,7 @@ function showEnd(which) {
 
 function handleRequest(req) {
   if (req.type === 'npc') talkToNpc(req.id);
+  else if (req.type === 'interact') useInteractable(game, req.id);
   else if (req.type === 'stairs') useStairsDialogue(req.options);
   else if (req.type === 'door') {
     const st = doorStatus(game, req.door);
@@ -352,10 +358,13 @@ window.raid = {
     scene, floor: game.floor, state: game.state, ticks: game.ticks, player: { ...game.player }, food: game.food,
     npcs: game.npcs.filter(n => n.floor === game.floor), enemies: game.floors[game.floor].enemies.filter(e => e.alive).map(e => ({ type: e.type, x: e.x, y: e.y })),
     quests: JSON.parse(JSON.stringify(game.qs.quests)), grid: noGrid ? undefined : game.grid, stairLock: game.stairLock, cleared: [...game.cleared], prompt: game.prompt,
+    power: game.power, interactables: game.interactables.filter(o => o.floor === game.floor).map(o => ({ ...o })),
     dialogue: dialogue && dialogueView(dialogue), enc: enc && encounterView(enc),
   }),
   world: () => ({
     stairs: WORLD.stairs, npcs: game.npcs.map(n => ({ id: n.id, floor: n.floor, x: n.x, y: n.y })), items: ITEM_PLACE,
+    interactables: STORY_INTERACTABLES,
+    rescueRooms: WORLD.floors.flatMap((f, floor) => Object.values(f.rooms).filter(r => r.boss_ready && r.id !== FINAL_ROOM).map(r => ({ id: r.id, floor }))),
     doors: WORLD.floors.map(f => [...new Set(Object.values(f.doors))].map(d => ({ zone: d.zone, cells: d.cells }))),
   }),
   setSpeed: n => { botSpeed = n; },

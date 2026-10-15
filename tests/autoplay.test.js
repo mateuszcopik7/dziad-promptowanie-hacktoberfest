@@ -3,8 +3,8 @@ const fs = require('fs'), path = require('path'), vm = require('vm'), assert = r
 
 const ctx = vm.createContext({ Math });
 const load = f => fs.readFileSync(path.join(__dirname, '../js', f), 'utf8');
-const src = ['world-data.js', 'world.js', 'content.js', 'quests.js', 'dialogue.js', 'battle.js', 'encounter.js', 'game.js', 'autoplay.js'].map(load).join('\n');
-vm.runInContext(src + `\nthis.api = { createGame, step, useStairs, respawn, doorStatus, applyEffects, gainXp, roomEncounter, chooseDialog, dialogFor, noteTalk,
+const src = ['world-data.js', 'world.js', 'content.js', 'quests.js', 'dialogue.js', 'battle.js', 'encounter.js', 'game.js', 'guide.js', 'autoplay.js'].map(load).join('\n');
+vm.runInContext(src + `\nthis.api = { createGame, step, useStairs, useInteractable, respawn, doorStatus, applyEffects, gainXp, roomEncounter, chooseDialog, dialogFor, noteTalk, onQuestRoom,
   QUEST_DEFS, createDialogue, stepDialogue, dialogueDone, createEncounter, stepEncounter, encounterDone, encounterResult, FINAL_ROOM,
   apGoal, apIntent, apDialogueKey, apBattleKey, apDodgeHeld, apStairsOption };`, ctx);
 const api = ctx.api;
@@ -28,6 +28,8 @@ function playThrough(maxTicks) {
       runDialogue(d, []);
       api.applyEffects(g, api.chooseDialog(g.qs, api.QUEST_DEFS, g.npcDefs, req.id, d.result));
       log.talks++;
+    } else if (req.type === 'interact') {
+      api.useInteractable(g, req.id);
     } else if (req.type === 'stairs') {
       const want = api.apGoal(g).floor, d = api.createDialogue({ npc: 'Klatka schodowa', lines: ['Dokad?'],
         options: [...req.options.map((s, i) => ({ id: 'go:' + i, label: String(s.to[0]) })), { id: 'stay', label: 'Zostan' }] });
@@ -42,7 +44,9 @@ function playThrough(maxTicks) {
       const r = api.encounterResult(e);
       log.encounters++;
       if (r.outcome === 'lost') { api.respawn(g); continue; }
-      p.hp = Math.max(1, r.hp); g.cleared.push(room.id); api.gainXp(g, r.xp);
+      p.hp = Math.max(1, r.hp); g.cleared.push(room.id);
+      if (!room.final) api.applyEffects(g, api.onQuestRoom(g.qs, api.QUEST_DEFS));
+      api.gainXp(g, r.xp);
       if (room.final) log.won = true;
     }
   }
@@ -69,19 +73,22 @@ function runEncounter(e) {
   assert(api.encounterDone(e), 'walka sie skonczyla');
 }
 
-test('autogra przechodzi cala gre: 4 questy, schody, aula, wygrana z Dyrektorem Bugow', () => {
+test('autogra przechodzi cala fabule: prad, ratunek, aula i wygrana z Dyrektorem Bugow', () => {
   const log = playThrough(120000);
   assert(log.won, 'finalowy boss pokonany lub oszczedzony, ticki: ' + log.g.ticks);
-  ['bugi', 'pieczatka', 'liscik', 'klucz'].forEach(q => assert.strictEqual(log.g.qs.quests[q].status, 'done', q));
-  assert(log.stairs >= 6 && log.talks >= 8, JSON.stringify({ stairs: log.stairs, talks: log.talks }));
+  ['zasilanie', 'ratunek'].forEach(q => assert.strictEqual(log.g.qs.quests[q].status, 'done', q));
+  assert(log.stairs >= 2 && log.talks >= 2, JSON.stringify({ stairs: log.stairs, talks: log.talks }));
 });
 
-test('apGoal: kolejnosc zadan od Woznego do auli', () => {
+test('apGoal: bezpieczniki, uczen, sale i aula', () => {
   const g = api.createGame();
-  assert.strictEqual(api.apGoal(g).npc, 'woznik');
-  g.qs.quests.bugi = { status: 'active', progress: 0 };
-  assert.strictEqual(api.apGoal(g).kind, 'hunt');
-  ['bugi', 'pieczatka', 'liscik', 'klucz'].forEach(q => { g.qs.quests[q] = { status: 'done' }; });
+  assert.strictEqual(api.apGoal(g).kind, 'interact');
+  api.useInteractable(g, 'glowne-bezpieczniki');
+  assert.strictEqual(api.apGoal(g).npc, 'uczen');
+  g.qs.quests.ratunek = { status: 'active', progress: 0 };
+  assert.strictEqual(api.apGoal(g).kind, 'door');
+  g.qs.quests.ratunek = { status: 'done', progress: 3 };
+  g.qs.unlocked.push('drzwi-auli');
   assert.strictEqual(api.apGoal(g).kind, 'door');
   g.cleared.push('f1-aula');
   assert.strictEqual(api.apGoal(g).kind, 'done');

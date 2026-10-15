@@ -50,8 +50,9 @@ function setupColumns(g) {
   const fl = g.player.flashlight;
   for (let x = 0; x < W; x++) {
     const off = Math.min(1, Math.abs(2 * x / W - 1) * 1.5), t = fl ? 1 - off * off : 0;
-    colExp[x] = EXPOSURE + (FLASH_EXPOSURE - EXPOSURE) * t;
-    colFar[x] = FAR + (FAR_FLASH - FAR) * t;
+    const baseExp = g.power ? EXPOSURE : 0.2, baseFar = g.power ? FAR : 3.2;
+    colExp[x] = baseExp + (FLASH_EXPOSURE - baseExp) * t;
+    colFar[x] = baseFar + (FAR_FLASH - baseFar) * t;
   }
 }
 
@@ -124,6 +125,9 @@ function spriteList(g) {
   fs.enemies.filter(e => e.alive).forEach(e => list.push({ x: e.x, y: e.y, spr: SPRITES[e.type], scale: ENEMY_TYPES[e.type].scale, hit: e.hit, shadow: true }));
   fs.pickups.forEach(k => list.push({ x: k.x, y: k.y, spr: SPRITES.food, scale: 0.28 }));
   fs.items.forEach(k => list.push({ x: k.x, y: k.y, spr: SPRITES[k.item], scale: 0.3 }));
+  g.interactables.filter(o => o.floor === g.floor).forEach(o => list.push({
+    x: o.x, y: o.y, spr: SPRITES[o.used ? 'breakerOn' : o.sprite], scale: 0.55, name: o.name,
+  }));
   g.npcs.filter(n => n.floor === g.floor).forEach(n => {
     const def = g.npcDefs[n.id];
     list.push({ x: n.x, y: n.y, spr: npcSprite(def.look, def.color), scale: (def.look && def.look.scale) || 0.85, name: def.name, shadow: true, marker: npcMarker(g.qs, QUEST_DEFS, g.npcDefs, n.id) });
@@ -349,7 +353,8 @@ function drawHud(g) {
   sctx.font = 'bold 18px monospace';
   hudText(g.world.floors[g.floor].name.toUpperCase(), bw - 16, y + 24, '#fff', 'right');
   sctx.font = 'bold 14px monospace';
-  hudText(p.flashlight ? 'F: latarka ON' : 'F: latarka', bw - 16, y + 46, p.flashlight ? '#ffe9a8' : '#aaa', 'right');
+  const power = g.power ? 'PRĄD: ON' : 'PRĄD: AWARIA';
+  hudText(`${power} · ${p.flashlight ? 'F: latarka ON' : 'F: latarka'}`, bw - 16, y + 46, g.power || p.flashlight ? '#ffe9a8' : '#ff6b6b', 'right');
   if (g.prompt) pill(g.prompt, bw / 2, y - 24, '#fff', 21);
   if (g.msgT > 0) {
     sctx.globalAlpha = Math.min(1, g.msgT / 30);

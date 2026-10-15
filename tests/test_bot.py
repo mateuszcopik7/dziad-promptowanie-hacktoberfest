@@ -21,19 +21,21 @@ WORLD = {
     "stairs": [{"id": "stairs-A-1-0-down", "floor": 1, "x": 1, "y": 3, "to": [0, 1, 3]},
                {"id": "stairs-A-1-2-up", "floor": 1, "x": 1, "y": 3, "to": [2, 1, 3]}],
     "npcs": [{"id": "woznik", "floor": 0, "x": 4.5, "y": 1.5}, {"id": "sekretarka", "floor": 0, "x": 4.5, "y": 1.5},
-             {"id": "uczen", "floor": 1, "x": 4.5, "y": 1.5}, {"id": "bibliotekarka", "floor": 1, "x": 4.5, "y": 1.5},
+             {"id": "uczen", "floor": 0, "x": 4.5, "y": 1.5}, {"id": "bibliotekarka", "floor": 1, "x": 4.5, "y": 1.5},
              {"id": "dyrektor", "floor": 3, "x": 4.5, "y": 1.5}],
     "items": [{"item": "pieczatka", "floor": 2, "x": 4.5, "y": 1.5}],
+    "interactables": [{"id": "glowne-bezpieczniki", "floor": 0, "x": 4.5, "y": 1.5}],
+    "rescueRooms": [{"id": "f0-gym", "floor": 0}],
     "doors": [[], [{"zone": "f1-aula", "cells": [[3, 2]]}], [], []],
 }
 
 
 def state(px, py, angle, quest=None, enemies=(), npc=(4.5, 1.5), floor=0, cleared=(), **quests):
     p = {"x": px, "y": py, "angle": angle, "hp": 100}
-    qs = {"bugi": {"status": quest}} if quest else {}
+    qs = {"zasilanie": {"status": quest or "active"}}
     qs.update({k: {"status": v} for k, v in quests.items()})
     return {"player": p, "grid": GRID, "food": 0, "quests": qs, "floor": floor, "cleared": list(cleared),
-            "npcs": [{"id": "woznik", "x": npc[0], "y": npc[1]}],
+            "npcs": [{"id": n["id"], "x": npc[0], "y": npc[1]} for n in WORLD["npcs"] if n["floor"] == floor],
             "enemies": [{"x": e[0], "y": e[1]} for e in enemies]}
 
 
@@ -60,7 +62,7 @@ class PathTest(unittest.TestCase):
 
 
 class MissionTest(unittest.TestCase):
-    def test_walks_to_giver_before_quest(self):
+    def test_walks_to_breaker_before_power(self):
         it = decide2(_d(1.5, 1.5, math.pi))
         self.assertNotEqual(it["turn"], 0)
         self.assertFalse(it["interact"])
@@ -70,20 +72,12 @@ class MissionTest(unittest.TestCase):
         self.assertTrue(it["interact"])
         self.assertEqual(it["move"], 0)
 
-    def test_fires_at_visible_bug(self):
-        it = decide2(_d(1.5, 1.5, 0, quest="active", enemies=[(2.9, 1.5)]))
-        self.assertTrue(it["fire"])
-
-    def test_no_fire_through_wall(self):
-        it = decide2(_d(2.5, 1.5, 0, quest="active", enemies=[(4.5, 1.5)]))
-        self.assertFalse(it["fire"])
-
-    def test_returns_to_giver_when_ready(self):
-        it = decide2(_d(1.5, 1.5, 0, quest="ready"))
+    def test_returns_to_student_when_rescue_ready(self):
+        it = decide2(_d(1.5, 1.5, 0, quest="done", ratunek="ready"))
         self.assertIn("interact", it)
 
     def test_done_ends_mission(self):
-        all_done = dict(quest="done", pieczatka="done", liscik="done", klucz="done", cleared=["f1-aula"])
+        all_done = dict(quest="done", ratunek="done", cleared=["f1-aula"])
         self.assertIsNone(decide2(_d(1.5, 1.5, 0, **all_done)))
 
 
@@ -102,16 +96,12 @@ class DialogueTest(unittest.TestCase):
 class GoalTest(unittest.TestCase):
     def test_quests_in_order(self):
         g = lambda **q: current_goal(state(1.5, 1.5, 0, **q), WORLD)
-        self.assertEqual(g()["npc"], "woznik")
-        self.assertEqual(g(quest="active")["kind"], "hunt")
-        self.assertEqual(g(quest="done")["npc"], "sekretarka")
-        self.assertEqual(g(quest="done", pieczatka="active")["kind"], "item")
-        self.assertEqual(g(quest="done", pieczatka="done")["npc"], "uczen")
-        self.assertEqual(g(quest="done", pieczatka="done", liscik="active")["npc"], "bibliotekarka")
-        self.assertEqual(g(quest="done", pieczatka="done", liscik="done")["npc"], "dyrektor")
-        self.assertEqual(g(quest="done", pieczatka="done", liscik="done", klucz="active")["npc"], "woznik")
-        self.assertEqual(g(quest="done", pieczatka="done", liscik="done", klucz="done")["kind"], "door")
-        self.assertEqual(g(quest="done", pieczatka="done", liscik="done", klucz="done", cleared=["f1-aula"])["kind"], "done")
+        self.assertEqual(g()["kind"], "interact")
+        self.assertEqual(g(quest="done")["npc"], "uczen")
+        self.assertEqual(g(quest="done", ratunek="active")["zone"], "f0-gym")
+        self.assertEqual(g(quest="done", ratunek="ready")["npc"], "uczen")
+        self.assertEqual(g(quest="done", ratunek="done")["kind"], "door")
+        self.assertEqual(g(quest="done", ratunek="done", cleared=["f1-aula"])["kind"], "done")
 
     def test_stairs_option_picks_floor(self):
         st = state(5.5, 27.5, 0, floor=1)

@@ -3,7 +3,7 @@ const fs = require('fs'), path = require('path'), vm = require('vm'), assert = r
 
 const ctx = vm.createContext({});
 const src = fs.readFileSync(path.join(__dirname, '../js/quests.js'), 'utf8');
-vm.runInContext(src + `\nthis.api = { createQuestState, questStatus, onQuestKill, onQuestItem, dialogFor, chooseDialog,
+vm.runInContext(src + `\nthis.api = { createQuestState, questStatus, onQuestKill, onQuestItem, onQuestRoom, onQuestSwitch, dialogFor, chooseDialog,
   isUnlocked, npcMarker, trackedQuests, noteTalk };`, ctx);
 const api = ctx.api;
 let passed = 0;
@@ -125,6 +125,27 @@ test('tracker pokazuje postep i powrot do zleceniodawcy', () => {
   const t = api.trackedQuests(qs, DEFS, NPCS)[0];
   assert(t.ready);
   assert.strictEqual(t.text, 'Wróć do: Woźny');
+});
+
+test('fabula: przelacznik konczy zasilanie od razu, a ratunek liczy oczyszczone sale', () => {
+  const defs = {
+    prad: { id: 'prad', title: 'Prąd', type: 'switch', giver: 'woznica', target: 'skrzynka', reward: { xp: 10 } },
+    ratunek: { id: 'ratunek', title: 'Ratunek', type: 'rescue', giver: 'uczen', count: 2, requires: ['prad'],
+      offerLines: ['Ratuj!'], activeLines: ['Dalej!'], doneLines: ['Dzięki!'], reward: { unlock: ['aula'] } },
+  };
+  const qs = api.createQuestState();
+  const npcs = { ...NPCS, uczen: { ...NPCS.uczen, quests: ['ratunek'] } };
+  qs.quests.prad = { status: 'active', progress: 0 };
+  const powerFx = api.onQuestSwitch(qs, defs, 'skrzynka');
+  assert.strictEqual(api.questStatus(qs, defs, 'prad'), 'done');
+  assert(powerFx.some(e => e.type === 'xp' && e.amount === 10));
+  api.chooseDialog(qs, defs, npcs, 'uczen', 'accept');
+  api.onQuestRoom(qs, defs);
+  assert.strictEqual(qs.quests.ratunek.progress, 1);
+  api.onQuestRoom(qs, defs);
+  assert.strictEqual(api.questStatus(qs, defs, 'ratunek'), 'ready');
+  api.chooseDialog(qs, defs, npcs, 'uczen', 'turnin');
+  assert(api.isUnlocked(qs, 'aula'));
 });
 
 test('kolejne wizyty u NPC maja inne kwestie (idleRepeat)', () => {

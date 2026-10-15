@@ -225,10 +225,12 @@ def door_step(state, world, zone):
     """Intent: podejdz do drzwi sali zone, stan przed nimi i wejdz w drzwi (uderzenie uruchamia walke)."""
     grid, p = state["grid"], state["player"]
     door = next(d for d in world["doors"][state["floor"]] if d["zone"] == zone)
-    options = [(tuple(c), n) for c in door["cells"] for n in free_neighbors(grid, tuple(c))]
+    blocked = npc_cells(state)
+    options = [(tuple(c), n, find_path(grid, cell_of(p), n, blocked)) for c in door["cells"] for n in free_neighbors(grid, tuple(c))]
+    options = [o for o in options if o[2]]
     if not options:
         return IDLE
-    (cx, cy), (nx, ny) = min(options, key=lambda o: math.hypot(o[1][0] + 0.5 - p["x"], o[1][1] + 0.5 - p["y"]))
+    (cx, cy), (nx, ny), _ = min(options, key=lambda o: len(o[2]))
     stand = {"x": nx + 0.5, "y": ny + 0.5}
     if dist_to(p, stand) > 0.35:
         return walk_to(state, stand, 0.2)
@@ -243,7 +245,7 @@ def quest_status(state, quest):
 
 
 def current_goal(state, world):
-    """Co robic teraz: {kind: npc|hunt|item|door|done, floor, ...}. Questy po kolei, na koncu aula."""
+    """Fabula: bezpieczniki, alarm ucznia, ratowanie sal, na koncu aula."""
     npcs = {n["id"]: n for n in world["npcs"]}
 
     def s(q):
@@ -252,17 +254,18 @@ def current_goal(state, world):
     def npc(i):
         return {"kind": "npc", "npc": i, "floor": npcs[i]["floor"]}
 
-    if s("bugi") != "done":
-        return {"kind": "hunt", "floor": 0, "npc": "woznik"} if s("bugi") == "active" else npc("woznik")
-    if s("pieczatka") != "done":
-        if s("pieczatka") == "active":
-            it = next(i for i in world["items"] if i["item"] == "pieczatka")
-            return {"kind": "item", "floor": it["floor"], "x": it["x"], "y": it["y"]}
-        return npc("sekretarka")
-    if s("liscik") != "done":
-        return npc("bibliotekarka") if s("liscik") == "active" else npc("uczen")
-    if s("klucz") != "done":
-        return npc("woznik") if s("klucz") == "active" else npc("dyrektor")
+    if s("zasilanie") != "done":
+        obj = next(i for i in world["interactables"] if i["id"] == "glowne-bezpieczniki")
+        return {"kind": "interact", **obj}
+    if s("ratunek") != "done":
+        if s("ratunek") != "active":
+            return npc("uczen")
+        rooms = [r for r in world["rescueRooms"] if r["id"] not in state["cleared"]]
+        here = [r for r in rooms if r["floor"] == state["floor"]]
+        if rooms:
+            room = (here or rooms)[0]
+            return {"kind": "door", "zone": room["id"], "floor": room["floor"]}
+        return npc("uczen")
     if FINAL_ZONE in state["cleared"]:
         return {"kind": "done", "floor": state["floor"]}
     return {"kind": "door", "zone": FINAL_ZONE, "floor": 1}
@@ -281,6 +284,8 @@ def decide(state, world):
     elif goal["kind"] == "npc":
         npc = next((n for n in state["npcs"] if n["id"] == goal["npc"]), None)
         intent = face_and_talk(state, npc) if npc else IDLE
+    elif goal["kind"] == "interact":
+        intent = face_and_talk(state, goal)
     elif goal["kind"] == "item":
         intent = walk_to(state, goal, 0.3)
     else:

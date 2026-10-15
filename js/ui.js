@@ -25,7 +25,7 @@ const stats = d => `
 const SCREENS = {
   main: () => `
     <h1>GLIWICE RAID</h1>
-    <p class="sub">Bugi opanowały ZSTI. Przejdź cały budynek.</p>
+    <p class="sub">Przywróć prąd. Uwolnij nauczycieli. Ocal ZSTI.</p>
     <button data-a="play">Graj</button>
     <button data-a="bot">Bot przechodzi grę</button>
     <button data-a="howto">Jak grać</button>
@@ -34,10 +34,10 @@ const SCREENS = {
 
   howto: () => `
     <h2>Jak grać</h2>
-    <p class="text">Zwiedzaj ZSTI: parter i trzy piętra, połączone klatkami schodowymi. Na początku masz tylko ręce i latarkę.</p>
-    <p class="text">Rozmawiaj z NPC na korytarzach (E) i bierz questy. Quest ze strzelaniem daje broń na czas zadania.</p>
-    <p class="text">Wejdź w drzwi sali: ekran gaśnie, nauczyciel prosi o pomoc, a potem jest walka turowa: FIGHT, ACT, ITEM, MERCY. Boss ginie albo można go oszczędzić.</p>
-    <p class="text">Cel: odblokuj aulę i pokonaj Dyrektora Bugów.</p>
+    <p class="text">Pietrzyk-Piotrowska przeprowadzi Cię przez tutorial. Potem przywróć zasilanie w szkole i porozmawiaj z uczniem na parterze.</p>
+    <p class="text">Potwory uwięziły nauczycieli w salach. Żółta strzałka i mapa prowadzą do aktualnego celu; obiekty i rozmowy obsługujesz klawiszem E.</p>
+    <p class="text">Wejdź w drzwi wskazanej sali: nauczyciel prosi o ratunek, a potem zaczyna się walka turowa: FIGHT, ACT, ITEM, MERCY. Potwora można pokonać albo oszczędzić.</p>
+    <p class="text">Cel: uwolnij nauczycieli, odblokuj aulę i zatrzymaj źródło ataku.</p>
     <p class="text keys">${ACTIONS.map(([id, label]) => `${label}: <b>${keyLabel(settings.keys[id])}</b>`).join(' · ')}<br>
       E: rozmowa · F: latarka · H: kanapka · Esc: pauza · M: minimapa<br>
       W rozmowie i walce: strzałki, Z / Enter: potwierdź, X: wstecz</p>

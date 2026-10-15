@@ -50,12 +50,15 @@ function createGame(world = WORLD) {
   const e = world.entrance, npcs = buildNpcs(world);
   npcs.defs[GUIDE_NPC.id] = GUIDE_NPC.def;
   npcs.list.push({ id: GUIDE_NPC.id, floor: GUIDE_NPC.floor, x: GUIDE_NPC.x, y: GUIDE_NPC.y });
+  const qs = createQuestState();
+  qs.quests.zasilanie = { status: 'active', progress: 0 };
   const g = {
     world, floor: e.floor, grid: null,
     player: { x: e.x + 0.5, y: e.y + 0.5, angle: -Math.PI / 2, hp: 60, maxHp: 60, level: 1, xp: 0, weapon: false, ammo: 0, flashlight: false },
     spawn: { floor: e.floor, x: e.x + 0.5, y: e.y + 0.5, angle: -Math.PI / 2 },
     floors: world.floors.map(() => ({ enemies: [], pickups: [], items: [] })),
-    npcs: npcs.list, npcDefs: npcs.defs, qs: createQuestState(), food: 2, kills: 0, cleared: [],
+    npcs: npcs.list, npcDefs: npcs.defs, qs, food: 2, kills: 0, cleared: [], power: false,
+    interactables: STORY_INTERACTABLES.map(o => ({ ...o, used: false })),
     state: 'play', ticks: 0, cooldown: 0, flash: 0, hurt: 0, msg: '', msgT: 0, events: [], request: null,
     stairLock: false, doorLock: 0, prompt: '', moving: false, walk: 0,
   };
@@ -213,8 +216,11 @@ function updatePickups(g) {
 function doorStatus(g, door) {
   const zone = floorOf(g).rooms[door.zone];
   if (g.cleared.includes(zone.id)) return { kind: 'msg', text: zone.name + ': pusto. Tu już zrobiłeś porządek.' };
-  if (zone.id === FINAL_ROOM && !isUnlocked(g.qs, 'drzwi-auli')) return { kind: 'msg', text: 'Aula zamknięta. Klucz ma Pani Dyrektor (III piętro).' };
+  if (zone.id === FINAL_ROOM && !isUnlocked(g.qs, 'drzwi-auli')) return { kind: 'msg', text: 'Aula zamknięta. Najpierw uwolnij nauczycieli i wróć do ucznia.' };
   if (!zone.boss_ready) return { kind: 'msg', text: (zone.number ? zone.number + ': ' : '') + zone.name + '. Zamknięte.' };
+  if (zone.id !== FINAL_ROOM && !['active', 'ready', 'done'].includes(questStatus(g.qs, QUEST_DEFS, 'ratunek'))) {
+    return { kind: 'msg', text: 'Drzwi są zablokowane. Najpierw dowiedz się od ucznia, co się stało.' };
+  }
   return { kind: 'encounter', zone };
 }
 
@@ -247,6 +253,33 @@ const nearestNpc = g => {
   }
   return best;
 };
+
+const nearestInteractable = g => {
+  const p = g.player;
+  let best = null, bestD = TALK_DISTANCE;
+  for (const o of g.interactables.filter(x => x.floor === g.floor)) {
+    const dx = o.x - p.x, dy = o.y - p.y, d = Math.hypot(dx, dy);
+    let da = Math.atan2(dy, dx) - p.angle;
+    da = Math.abs(Math.atan2(Math.sin(da), Math.cos(da)));
+    if (d < bestD && da < 0.9) { best = o; bestD = d; }
+  }
+  return best;
+};
+
+function useInteractable(g, id) {
+  const o = g.interactables.find(x => x.id === id);
+  if (!o) return;
+  if (id === 'glowne-bezpieczniki' && !o.used) {
+    const fx = onQuestSwitch(g.qs, QUEST_DEFS, id);
+    if (!fx.length) return notify(g, 'Skrzynka nie reaguje. Najpierw porozmawiaj z Pietrzyk-Piotrowską.');
+    o.used = true; g.power = true;
+    applyEffects(g, fx);
+    notify(g, 'ZASILANIE PRZYWRÓCONE — znajdź ucznia na parterze', 260);
+    g.events.push('levelup');
+    return;
+  }
+  notify(g, 'Zasilanie już działa.');
+}
 
 function useStairs(g, s) {
   setFloor(g, s.to[0]);
@@ -291,11 +324,13 @@ function step(g, it) {
   if (!onStairs) g.stairLock = false;
   else if (!g.stairLock && !g.request) { g.request = { type: 'stairs', options: stairsNear(g.world, g.floor, p.x) }; g.stairLock = true; }
 
-  const npc = nearestNpc(g);
+  const npc = nearestNpc(g), object = nearestInteractable(g);
   const doorFront = doorAhead(g);
   g.prompt = npc ? 'E: porozmawiaj z ' + g.npcDefs[npc.id].name
+    : object ? 'E: użyj — ' + object.name
     : doorFront ? doorLabel(g, doorFront).prompt : onStairs ? 'Klatka schodowa: wybierz piętro w oknie' : '';
   if (it.interact && npc && !g.request) g.request = { type: 'npc', id: npc.id };
+  else if (it.interact && object && !g.request) g.request = { type: 'interact', id: object.id };
 
   if (it.flashlight) p.flashlight = !p.flashlight;
   if (it.heal && g.food > 0 && p.hp < p.maxHp) { g.food--; p.hp = Math.min(p.maxHp, p.hp + FOOD_HEAL); g.events.push('pickup'); }

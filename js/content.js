@@ -3,23 +3,23 @@
 
 // --- NPC z questami (slot = id z mapa.json -> npc_slots) -------------------------------------
 const NPC_DEFS = {
-  woznik: { name: 'Woźny Heniek', slot: 'npc-0-02', color: '#7a4bd1', voice: { pitch: 140 }, quests: ['bugi'],
+  woznik: { name: 'Woźny Heniek', slot: 'npc-0-02', color: '#7a4bd1', voice: { pitch: 140 }, quests: [],
     idle: ['* Szkoła nie sprząta się sama.{p} A szkoda.'], idleRepeat: [['* Znowu Ty?{p} Pytaj, o co chcesz.'], ['* Idź już, {p}mam co robić.']] },
-  sekretarka: { name: 'Pani Sekretarka', slot: 'npc-0-01', color: '#d1684b', voice: { pitch: 360 }, quests: ['pieczatka'],
+  sekretarka: { name: 'Pani Sekretarka', slot: 'npc-0-01', color: '#d1684b', voice: { pitch: 360 }, quests: [],
     idle: ['* Wszystko wymaga pieczątki.{p} Wszystko.'], idleRepeat: [['* Pieczątka sama się nie znajdzie.']] },
-  uczen: { name: 'Uczeń z 3B', slot: 'npc-1-02', color: '#4bb0d1', voice: { pitch: 260 }, quests: ['liscik'],
-    idle: ['* Nie mam czasu,{p} kartkówka!'], idleRepeat: [['* Jeszcze tu jesteś?']] },
+  uczen: { name: 'Uczeń z 3B', slot: 'npc-0-03', color: '#4bb0d1', voice: { pitch: 260 }, quests: ['ratunek'],
+    idle: ['* Coś jest nie tak...{p} W salach słychać hałas.'], idleRepeat: [['* Nauczyciele wciąż są w salach!']] },
   bibliotekarka: { name: 'Pani Bibliotekarka', slot: 'npc-1-05', color: '#4bd183', voice: { pitch: 380 }, quests: [],
     idle: ['* Ciii.{p} To biblioteka.{p} No, prawie.'], idleRepeat: [['* {shake}Ciii!{/shake}']] },
-  dyrektor: { name: 'Pani Dyrektor', slot: 'npc-3-03', color: '#d1b04b', voice: { pitch: 200 }, quests: ['klucz'],
+  dyrektor: { name: 'Pani Dyrektor', slot: 'npc-3-03', color: '#d1b04b', voice: { pitch: 200 }, quests: [],
     idle: ['* Słucham?'], idleRepeat: [['* Jeśli to nie pilne,{p} wróć później.']] },
 };
 
-// przewodnik na starcie: stoi w holu przed graczem i uczy sterowania (scenka w main.js: startIntro)
+// Pietrzyk-Piotrowska prowadzi tutorial i daje pierwsza misje fabularna.
 const GUIDE_NPC = {
-  id: 'przewodnik', floor: 0, x: 41.5, y: 50.5,
-  def: { name: 'Przewodnik', color: '#4ad6c9', voice: { pitch: 250 }, quests: [],
-    idle: ['* Zacznij od Woźnego Heńka.{p} Żółta strzałka u góry Cię poprowadzi.'], idleRepeat: [['* Pamiętaj: {c:yellow}E{/c} to rozmowa.']],
+  id: 'pietrzyk', floor: 0, x: 41.5, y: 50.5,
+  def: { name: 'Pietrzyk-Piotrowska', color: '#4ad6c9', voice: { pitch: 250 }, quests: ['zasilanie'],
+    idle: ['* Najpierw uruchom {c:yellow}główne bezpieczniki{/c}.{p} Skrzynka jest po lewej stronie holu.'], idleRepeat: [['* Żółta strzałka prowadzi do skrzynki.{p} Podejdź i naciśnij {c:yellow}E{/c}.']],
     look: { head: 'short', body: 'coat', hair: '#2a2a30', skin: '#e8c0a0', bottom: '#2c3a4a', acc: '#4ad6c9', glasses: true, scale: 0.9 } },
 };
 
@@ -37,6 +37,20 @@ const FLAVOR_NPCS = [
 
 // --- questy (silnik: js/quests.js). Pola dodatkowe: onAccept / onDone obsluguje game.js ---------
 const QUEST_DEFS = {
+  zasilanie: { id: 'zasilanie', title: 'Ciemność w szkole', type: 'switch', giver: 'pietrzyk', target: 'glowne-bezpieczniki', targetName: 'Główna skrzynka bezpieczników',
+    offerLines: ['* W szkole wysiadł prąd.{p} Uruchom główne bezpieczniki.'],
+    activeLines: ['* Skrzynka jest po lewej stronie holu.{p} Podejdź i użyj {c:yellow}E{/c}.'],
+    doneLines: ['* Zasilanie wróciło.'], reward: { xp: 25 } },
+  ratunek: { id: 'ratunek', title: 'Nauczyciele w pułapce', type: 'rescue', giver: 'uczen', count: 3, requires: ['zasilanie'],
+    offerLines: [{ text: '* Potwory zaatakowały szkołę!', face: 'sad' },
+      '* Nauczyciele są uwięzieni w salach.{p} Słychać ich na każdym piętrze.',
+      '* Wejdź do sal i pokonaj potwory.{p} Musimy ich uwolnić!'],
+    activeLines: ['* Nauczyciele nadal są uwięzieni.{p} Żółta strzałka pokaże najbliższą salę.'],
+    doneLines: [{ text: '* Udało się!{p} Nauczyciele są bezpieczni.', face: 'smile' },
+      '* Atak idzie z {c:red}auli{/c}.{p} Weź ten klucz i zakończ to.'],
+    reward: { xp: 120, unlock: ['drzwi-auli'] } },
+  /* Starsze poboczne zadania zostają w danych jako materiał do dalszej rozbudowy,
+     ale nie są już przypięte do NPC i nie blokują głównej fabuły. */
   bugi: { id: 'bugi', title: 'Bugi w korytarzu', type: 'kill', giver: 'woznik', zone: 'f0-corridor', zoneName: 'Korytarz', count: 5,
     offerLines: [{ text: '* Słuchaj,{p} mamy {c:red}problem{/c}.', face: 'sad' }, '* Po korytarzu biegają {shake}bugi{/shake}.{p} Gryzą kable i uczniów.',
       '* Weź ten {c:yellow}pistolet{/c}.{p} Wyczyść korytarz i oddaj mi broń.'],
@@ -53,6 +67,11 @@ const QUEST_DEFS = {
     deliverLines: ['* Dyrektorka Cię przysłała?{p} No dobrze.{p} Masz {c:yellow}klucz do auli{/c}.'], deliverLabel: 'Powiedz o kluczu',
     activeLines: ['* Woźny Heniek ma klucz.{p} Parter.'], doneLines: [{ text: '* Klucz masz.{p} Powodzenia w auli.', face: 'smile' }], reward: { xp: 100, unlock: ['drzwi-auli'] } },
 };
+
+// Obiekty fabularne stojace w swiecie i obslugiwane klawiszem E.
+const STORY_INTERACTABLES = [
+  { id: 'glowne-bezpieczniki', name: 'Skrzynka bezpieczników', floor: 0, x: 33.5, y: 50.5, sprite: 'breaker' },
+];
 
 // przedmioty do znalezienia w swiecie
 const ITEM_PLACE = [{ item: 'pieczatka', name: 'Pieczątka', floor: 2, x: 44.5, y: 27.5 }];
@@ -136,10 +155,10 @@ function roomEncounter(zone, floorIdx) {
   return {
     id: zone.id, name: zone.name,
     teacher: { name: t.name, voice: { pitch: t.pitch }, look: { color: t.color },
-      intro: [{ text: '* Dobrze, że jesteś.{p} Potrzebuję {c:yellow}pomocy{/c}.', face: 'sad' },
-        `* W sali ${zone.number || ''} ${zone.name} zalęgło się {shake}coś dziwnego{/shake}.`,
-        { text: '* Nikt nie może prowadzić lekcji.{p} Spróbuj to uspokoić...{p} albo pokonać.', face: 'smile' }],
-      outro: { killed: ['* Cisza.{p} Aż za cicho.{p} Dziękuję.'], spared: [{ text: '* Uspokoiłeś to.{p} Nie spodziewałem się.', face: 'smile' }, '* Dziękuję.'], lost: ['* Nic Ci nie jest?'] } },
+      intro: [{ text: '* Dobrze, że jesteś!{p} Potwór zamknął mnie w tej sali.', face: 'sad' },
+        `* W sali ${zone.number || ''} ${zone.name} czai się {shake}coś dziwnego{/shake}.`,
+        { text: '* Pokonaj je albo uspokój.{p} Byleśmy mogli stąd wyjść.', face: 'smile' }],
+      outro: { killed: ['* Jestem wolny.{p} Dziękuję za ratunek!'], spared: [{ text: '* Uspokoiłeś je.{p} Jesteśmy bezpieczni.', face: 'smile' }, '* Dziękuję za ratunek!'], lost: ['* Nic Ci nie jest?'] } },
     boss: { ...tpl, hp: Math.round(tpl.hp * scale), xp: Math.round(tpl.xp * scale) }, reward: { xp: 20 + 10 * floorIdx, unlock: [] },
   };
 }

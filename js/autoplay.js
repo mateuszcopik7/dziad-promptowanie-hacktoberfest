@@ -1,7 +1,7 @@
 // autogra: bot w przegladarce (przycisk "Bot przechodzi gre" w menu). Port logiki bot/bot.py na stan gry w pamieci.
 // Czysta logika bez DOM: apIntent(g) daje intent chodzenia, apDialogueKey / apBattleKey / apDodgeHeld sterują scenami.
-// Przebieg: 4 questy po kolei (bugi, pieczatka, liscik, klucz), potem aula i walka z Dyrektorem Bugow (ACT -> MERCY).
-// Wymaga: game.js, quests.js, content.js, world.js.
+// Przebieg: bezpieczniki, alarm ucznia, ratowanie nauczycieli, potem aula i Dyrektor Bugow (ACT -> MERCY).
+// Wymaga: game.js, guide.js, quests.js, content.js, world.js.
 
 const AP = {
   TALK_RANGE: 1.5, KEEP_DISTANCE: 2.2, FIRE_RANGE: 9, AIM_TOL: 0.06, FACE_TOL: 0.12, MAX_TURN: 0.05, TURN_GAIN: 0.3,
@@ -96,6 +96,12 @@ function apTalk(g, npc) {
   return apIntentOf({ move: Math.abs(err) < 0.5 && !close ? 1 : 0, turn, interact: close && Math.abs(err) < AP.FACE_TOL });
 }
 
+function apUse(g, object) {
+  const p = g.player, dist = apDist(p, object), close = dist < AP.TALK_RANGE;
+  const [wx, wy] = close ? [object.x, object.y] : apWaypoint(g, object), [err, turn] = apTurn(p, wx, wy);
+  return apIntentOf({ move: Math.abs(err) < 0.5 && !close ? 1 : 0, turn, interact: close && Math.abs(err) < AP.FACE_TOL });
+}
+
 // --- schody i drzwi ----------------------------------------------------------------------------------
 const apFreeNeighbors = (grid, [x, y]) => [[x + 1, y], [x - 1, y], [x, y + 1], [x, y - 1]]
   .filter(([nx, ny]) => ny >= 0 && nx >= 0 && ny < grid.length && nx < grid[0].length && !grid[ny][nx]);
@@ -123,9 +129,10 @@ function apStairsOption(g, wantFloor) {
 
 function apDoorStep(g, zone) {
   const p = g.player, door = Object.values(g.world.floors[g.floor].doors).find(d => d.zone === zone);
-  const options = door.cells.flatMap(c => apFreeNeighbors(g.grid, c).map(n => ({ c, n })));
+  const blocked = apNpcCells(g);
+  const options = door.cells.flatMap(c => apFreeNeighbors(g.grid, c).map(n => ({ c, n, path: apPath(g.grid, apCell(p), n, blocked) }))).filter(o => o.path);
   if (!options.length) return apIntentOf({});
-  const { c, n } = options.reduce((a, b) => (Math.hypot(b.n[0] + 0.5 - p.x, b.n[1] + 0.5 - p.y) < Math.hypot(a.n[0] + 0.5 - p.x, a.n[1] + 0.5 - p.y) ? b : a));
+  const { c, n } = options.reduce((a, b) => (b.path.length < a.path.length ? b : a));
   const stand = { x: n[0] + 0.5, y: n[1] + 0.5 };
   if (apDist(p, stand) > 0.35) return apWalkTo(g, stand, 0.2);
   const [err, turn] = apTurn(p, c[0] + 0.5, c[1] + 0.5);
@@ -136,14 +143,16 @@ function apDoorStep(g, zone) {
 // co robic teraz: { kind: npc|hunt|item|door|done, floor, ... }. Questy po kolei, na koncu aula.
 function apGoal(g) {
   const st = id => questStatus(g.qs, QUEST_DEFS, id), npc = id => ({ kind: 'npc', npc: id, floor: g.npcs.find(n => n.id === id).floor });
-  if (st('bugi') !== 'done') return st('bugi') === 'active' ? { kind: 'hunt', floor: 0 } : npc('woznik');
-  if (st('pieczatka') !== 'done') {
-    if (st('pieczatka') !== 'active') return npc('sekretarka');
-    const it = ITEM_PLACE.find(i => i.item === 'pieczatka');
-    return { kind: 'item', floor: it.floor, x: it.x, y: it.y };
+  if (st('zasilanie') !== 'done') {
+    const o = g.interactables.find(x => x.id === 'glowne-bezpieczniki');
+    return { kind: 'interact', floor: o.floor, object: o.id, x: o.x, y: o.y };
   }
-  if (st('liscik') !== 'done') return npc(st('liscik') === 'active' ? 'bibliotekarka' : 'uczen');
-  if (st('klucz') !== 'done') return npc(st('klucz') === 'active' ? 'woznik' : 'dyrektor');
+  if (st('ratunek') !== 'done') {
+    if (st('ratunek') !== 'active') return npc('uczen');
+    const room = nextBossRoom(g);
+    if (room) return { kind: 'door', zone: room.zone, floor: room.floor };
+    return npc('uczen');
+  }
   if (g.cleared.includes(AP.FINAL_ZONE)) return { kind: 'done', floor: g.floor };
   return { kind: 'door', zone: AP.FINAL_ZONE, floor: 1 };
 }
@@ -156,6 +165,7 @@ function apIntent(g) {
   if (goal.floor !== g.floor) it = apStairsStep(g, goal.floor);
   else if (goal.kind === 'hunt') it = apHunt(g) || apIntentOf({});
   else if (goal.kind === 'npc') { const n = g.npcs.find(x => x.id === goal.npc); it = apTalk(g, n); }
+  else if (goal.kind === 'interact') { const o = g.interactables.find(x => x.id === goal.object); it = apUse(g, o); }
   else if (goal.kind === 'item') it = apWalkTo(g, goal, 0.3);
   else it = apDoorStep(g, goal.zone);
   if (it.move) {                                                   // utknelismy (np. za NPC): dorzuc unik w bok

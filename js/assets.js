@@ -167,6 +167,30 @@ const SPRITES = {
     '...yy...',
     '...yy...',
   ], { g: rgb(150, 150, 160), b: rgb(40, 90, 200), y: rgb(230, 200, 60) }),
+  breaker: makeSprite([
+    '..ssssss..',
+    '.swwwwwws.',
+    '.swrrrrws.',
+    '.swrgggws.',
+    '.swrgggws.',
+    '.swrrrrws.',
+    '.swwwwwws.',
+    '..ssssss..',
+    '...bbbb...',
+    '...bbbb...',
+  ], { s: rgb(75, 82, 92), w: rgb(205, 210, 215), r: rgb(155, 45, 40), g: rgb(55, 180, 80), b: rgb(40, 45, 52) }),
+  breakerOn: makeSprite([
+    '..ssssss..',
+    '.swwwwwws.',
+    '.swggggws.',
+    '.swgyygws.',
+    '.swgyygws.',
+    '.swggggws.',
+    '.swwwwwws.',
+    '..ssssss..',
+    '...bbbb...',
+    '...bbbb...',
+  ], { s: rgb(75, 82, 92), w: rgb(225, 230, 235), g: rgb(55, 205, 90), y: rgb(255, 235, 80), b: rgb(40, 45, 52) }),
 };
 
 // postac NPC sklada sie z glowy i ciala. Znaki: h wlosy, s skora, e oczy, c gora ubrania, d dol, k czapka/buty, l oprawki okularow
