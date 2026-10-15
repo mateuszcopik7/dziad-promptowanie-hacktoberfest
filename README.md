@@ -1,25 +1,25 @@
 # ZSTI ADVENTURE
 
-**Doom spotyka Undertale w ZSTI Gliwice.** Raycaster 3D w czystym HTML/JS, cztery piętra szkoły odtworzone ze zdjęć, rozmowy i walki turowe w stylu Undertale. Do tego bot, który przechodzi całą grę sam.
+Przeglądarkowa gra 3D osadzona w budynku ZSTI Gliwice. Widok z pierwszej osoby jest renderowany raycasterem w czystym HTML/JS, bez buildu i bez zależności. Budynek ma parter i trzy piętra, odtworzone na podstawie zdjęć szkoły. Gracz rozmawia z NPC, wykonuje questy i wchodzi do sal, gdzie toczy turowe walki z bossami w stylu Undertale. Gra zawiera bota, który przechodzi ją od początku do końca bez udziału gracza: w przeglądarce (przycisk w menu) albo jako skrypt w Pythonie z Playwright.
 
-**[Zagraj w przeglądarce](https://mateuszcopik7.github.io/dziad-promptowanie-hacktoberfest/)** · bez instalacji, bez buildu, bez zależności
+Gra online: https://mateuszcopik7.github.io/dziad-promptowanie-hacktoberfest/
 
-Hacktoberfest Hack Day Gliwice 2026 · temat **Automation & Emulation**
+Projekt na Hacktoberfest Hack Day Gliwice 2026, temat Automation & Emulation.
 
 ![Bot przechodzi grę](docs/demo/bot-speedrun.gif)
 
-*Bot przechodzi całą grę sam w 2,5 minuty: rozmowy, questy, schody, walki, finał. Nagranie przyspieszone 10x.*
+*Bot przechodzi całą grę w około 2,5 minuty: rozmowy, questy, schody, walki, finał. Nagranie przyspieszone 10x.*
 
-## Co tu jest
+## Zawartość
 
-| | |
+| Element | Opis |
 | --- | --- |
-| **Szkoła w 3D** | Parter i trzy piętra połączone klatkami schodowymi. Plan ze zdjęć ZSTI: dwukolorowe ściany, drzwi z tabliczkami, okna, lastryko, panele LED, ławki, filary. Każde piętro ma swój motyw. |
-| **Klimat** | Krótki zasięg widzenia, mgła, latarka pod `F`, winieta, wstrząsy ekranu, cząsteczki przy trafieniach. |
-| **Rozmowy jak w Undertale** | Tekst pisany literka po literce, głosy postaci, kolory, drżenie, wybory. Portrety pixel-art nauczycieli. |
-| **Walki turowe** | `FIGHT` z paskiem timingu, `ACT` zmienia nastrój bossa, `ITEM` leczy, `MERCY` oszczędza. W turze bossa unikasz pocisków sercem. |
-| **Fabuła** | Szkoła bez prądu, potwory w salach, nauczyciele uwięzieni. Ratujesz ich, pokonujesz Dyrektora Bugów w auli i uciekasz głównym wyjściem. |
-| **Bot** | Przycisk w menu albo bot w Pythonie. Gra sam od startu do końca. |
+| Świat | Jeden budynek: parter i trzy piętra połączone dwiema klatkami schodowymi. Ściany, drzwi z tabliczkami, okna, podłoga z lastryka, panele LED, ławki i filary wzorowane na zdjęciach ZSTI. Każde piętro ma osobny zestaw kolorów. |
+| Grafika | Raycaster z teksturowaną podłogą i sufitem, mgła i krótki zasięg widzenia, latarka (`F`), winieta, cienie pod postaciami, cząsteczki przy trafieniach. |
+| Dialogi | Tekst wyświetlany litera po literze z dźwiękiem głosu, kolorami i drżeniem tekstu, wybór odpowiedzi. Portrety nauczycieli w pixel-arcie. |
+| Walki | Turowe: `FIGHT` (pasek timingu), `ACT` (zmienia nastrój bossa), `ITEM` (leczenie), `MERCY` (oszczędzenie przy pełnym nastroju). W turze bossa gracz steruje sercem i unika pocisków. |
+| Fabuła | Szkoła bez prądu, potwory w salach, uwięzieni nauczyciele. Gracz uwalnia nauczycieli, pokonuje Dyrektora Bugów w auli i wychodzi ze szkoły. |
+| Bot | Przechodzi całą grę: w przeglądarce (`js/autoplay.js`) albo przez Playwright (`bot/bot.py`). |
 
 ## Demo
 
