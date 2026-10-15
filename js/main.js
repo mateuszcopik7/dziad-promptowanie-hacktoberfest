@@ -11,6 +11,7 @@ let game = createGame();
 let dialogue = null, dialogueColor = '#fff', dialogueCallback = null, enc = null;
 let acc = 0, last = performance.now(), tick = 0, mouseDX = 0, mouseDown = false;
 let sceneHeld = {}, sceneQueue = [];
+let botSpeed = 1;                                     // mnoznik tempa symulacji (bot przyspiesza gre)
 let botIntent = null;                                 // gdy ustawione, zastepuje klawiature (bot)
 
 // klawisze w dialogach i walce (strzalki i WASD, Z/Enter/Spacja, X)
@@ -273,23 +274,39 @@ function frame(now) {
   const dt = Math.min(100, now - last);
   last = now; tick++;
   if (scene === 'menu') game.player.angle += 0.0015;
-  else if (scene === 'play') { acc += dt; updatePlay(); }
-  else if (scene === 'dialogue') { acc += dt; updateDialogue(); }
-  else if (scene === 'encounter') { acc += dt; updateEncounter(); }
+  else if (scene === 'play') { acc += dt * botSpeed; updatePlay(); }
+  else if (scene === 'dialogue') { acc += dt * botSpeed; updateDialogue(); }
+  else if (scene === 'encounter') { acc += dt * botSpeed; updateEncounter(); }
   render(game, scene !== 'menu');
   drawOverlays();
   requestAnimationFrame(frame);
 }
 
 // interfejs dla bota (Playwright): odczyt stanu i sterowanie bez klawiatury
+const dialogueView = d => ({ npc: d.npc, phase: d.phase, options: d.options.map(o => o.id), cursor: d.cursor });
+const encounterView = e => ({
+  phase: e.phase, dialogue: e.dialogue && dialogueView(e.dialogue),
+  battle: e.battle && {
+    phase: e.battle.phase, menu: e.battle.menu, cursor: e.battle.cursor, hp: e.battle.hp, maxHp: e.battle.maxHp,
+    mercy: e.battle.mercy, enemyHp: e.battle.enemyHp, invuln: e.battle.invuln, heart: { ...e.battle.heart },
+    bullets: e.battle.bullets.map(k => ({ x: k.x, y: k.y, vx: k.vx, vy: k.vy, r: k.r })),
+    acts: e.battle.def.acts.map(a => ({ id: a.id, mercy: a.mercy || 0 })), items: e.battle.items.map(i => i.count),
+  },
+});
+
 window.raid = {
   scene: () => scene,
-  state: () => ({
+  state: noGrid => ({
     scene, floor: game.floor, state: game.state, ticks: game.ticks, player: { ...game.player }, food: game.food,
     npcs: game.npcs.filter(n => n.floor === game.floor), enemies: game.floors[game.floor].enemies.filter(e => e.alive).map(e => ({ type: e.type, x: e.x, y: e.y })),
-    quests: JSON.parse(JSON.stringify(game.qs.quests)), grid: game.grid, cleared: [...game.cleared], prompt: game.prompt,
-    dialogue: dialogue && { npc: dialogue.npc, phase: dialogue.phase, options: dialogue.options.map(o => o.id), cursor: dialogue.cursor },
+    quests: JSON.parse(JSON.stringify(game.qs.quests)), grid: noGrid ? undefined : game.grid, stairLock: game.stairLock, cleared: [...game.cleared], prompt: game.prompt,
+    dialogue: dialogue && dialogueView(dialogue), enc: enc && encounterView(enc),
   }),
+  world: () => ({
+    stairs: WORLD.stairs, npcs: game.npcs.map(n => ({ id: n.id, floor: n.floor, x: n.x, y: n.y })), items: ITEM_PLACE,
+    doors: WORLD.floors.map(f => [...new Set(Object.values(f.doors))].map(d => ({ zone: d.zone, cells: d.cells }))),
+  }),
+  setSpeed: n => { botSpeed = n; },
   setIntent: it => { botIntent = it; },
   action: a => ui.onAction(a),
 };

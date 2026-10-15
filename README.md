@@ -61,18 +61,18 @@ python3 mapa/sprawdz.py
 | `js/render.js` | raycaster, sprite'y, latarka, HUD, minimapa |
 | `js/weapon-art.js` | ręce, pistolet i latarka (pixel art) |
 | `js/assets.js`, `js/audio.js`, `js/settings.js`, `js/ui.js`, `js/main.js` | tekstury, dźwięki, ustawienia, menu, pętla gry |
-| `bot/bot.py` | bot w Pythonie (Playwright): przechodzi quest „Bugi w korytarzu” sam |
+| `bot/bot.py` | bot w Pythonie (Playwright): przechodzi całą grę sam |
 | `tests/` | testy w Node (`*.test.js`) i Pythonie |
 
 ## Bot (Automation)
 
-Bot steruje prawdziwą grą w Chromium przez Playwright: czyta stan z `window.raid.state()`, planuje trasę (BFS po siatce piętra), celuje i strzela przez `window.raid.setIntent()`, a dialogi przechodzi klawiszami. Misja: idzie do Woźnego Heńka, przyjmuje quest, zabija 5 bugów, wraca po nagrodę (około 30 s).
+Bot przechodzi całą grę sam, w prawdziwym Chromium przez Playwright. Czyta stan z `window.raid.state()` i `window.raid.world()`, planuje trasę (BFS po siatce piętra, schody między piętrami), strzela i chodzi przez `window.raid.setIntent()`, a dialogi i walki obsługuje klawiszami. Przebieg: 4 questy po kolei (Woźny Heniek, Sekretarka, Uczeń i Bibliotekarka, Dyrektorka), potem aula i walka z Dyrektorem Bugów: ACT do pełnego nastroju, potem MERCY. Pociski omija planerem, który sprawdza bezpieczne punkty w pudełku na kilkadziesiąt klatek do przodu. Cała gra w około 2 minuty przy `--speed 3`.
 
 ```bash
 python3 -m venv .venv && .venv/bin/pip install -r bot/requirements.txt && .venv/bin/playwright install chromium
 python3 -m http.server 8765 &
-.venv/bin/python bot/bot.py --url http://localhost:8765/index.html          # z oknem
-.venv/bin/python bot/bot.py --url http://localhost:8765/index.html --headless
+.venv/bin/python bot/bot.py --url http://localhost:8765/index.html            # z oknem
+.venv/bin/python bot/bot.py --url http://localhost:8765/index.html --headless --speed 3
 ```
 
 ## Testy
