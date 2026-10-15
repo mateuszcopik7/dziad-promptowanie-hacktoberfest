@@ -14,7 +14,7 @@ const floorAt = (g, x, y) => g.grid[Math.floor(y)] && g.grid[Math.floor(y)][Math
 api.LEVELS.forEach((L, i) => {
   test(`poziom ${i + 1} (${L.name}): ksztalt i obramowanie`, () => {
     assert(L.map.every(r => r.length === L.map[0].length), 'wiersze roznej dlugosci');
-    assert(L.map.every(r => /^[.1-6]+$/.test(r)), 'zly znak w mapie');
+    assert(L.map.every(r => /^[.1-9]+$/.test(r)), 'zly znak w mapie');
     assert([...L.map[0], ...L.map[L.map.length - 1]].every(c => c !== '.'), 'dziura w gornej/dolnej scianie');
     assert(L.map.every(r => r[0] !== '.' && r[r.length - 1] !== '.'), 'dziura w bocznej scianie');
   });
@@ -35,6 +35,14 @@ api.LEVELS.forEach((L, i) => {
       assert(seen.has(Math.floor(e.x) + ',' + Math.floor(e.y)), `wrog ${e.type} ${e.x},${e.y} nieosiagalny`);
     }
     for (const k of g.pickups) assert(seen.has(Math.floor(k.x) + ',' + Math.floor(k.y)), `pickup ${k.kind} ${k.x},${k.y} nieosiagalny`);
+  });
+});
+
+test('boss wystepuje tylko na ostatnim poziomie', () => {
+  const last = api.LEVELS.length - 1;
+  api.LEVELS.forEach((L, i) => {
+    const bosses = L.enemies.filter(([type]) => type === 'boss');
+    assert.strictEqual(bosses.length, i === last ? 1 : 0);
   });
 });
 

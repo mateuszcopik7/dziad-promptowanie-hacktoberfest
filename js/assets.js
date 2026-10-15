@@ -64,6 +64,37 @@ const TEX = {
     if (y >= 28 && y <= 35) return rgb(clamp(50 + j), clamp(110 + j), clamp(170 + j));
     return rgb(clamp(222 + j), clamp(224 + j), clamp(218 + j));
   }),
+  7: makeTex((x, y) => {                      // jasny korytarz z oknami i szarym pasem
+    const j = jitter(x >> 2, y >> 2, 7) + jitter(x, y, 3);
+    if (y >= 47) return rgb(clamp(86 + j), clamp(91 + j), clamp(94 + j));
+    if (y >= 33) return rgb(clamp(205 + j), clamp(208 + j), clamp(205 + j));
+    const window = x >= 5 && x <= 27 && y >= 5 && y <= 28;
+    if (window && (x <= 7 || x >= 25 || y <= 7 || y >= 26)) return rgb(225, 228, 224);
+    if (window) return rgb(clamp(157 + j), clamp(194 + j), clamp(211 + j));
+    return rgb(clamp(235 + j), clamp(235 + j), clamp(229 + j));
+  }),
+  8: makeTex((x, y) => {                      // stalowoszare drzwi sal
+    const j = jitter(x, y, 8);
+    if (x < 5 || x > 58 || y < 3) return rgb(205, 208, 205);
+    if (x < 8 || x > 55 || y < 6 || y > 61) return rgb(105, 110, 112);
+    if (x >= 21 && x <= 42 && y >= 9 && y <= 20) {
+      if (x === 21 || x === 42 || y === 9 || y === 20) return rgb(75, 80, 82);
+      if (y >= 14 && y <= 16 && x % 5 < 3) return rgb(55, 60, 62);
+      return rgb(224, 224, 215);
+    }
+    if (x >= 48 && x <= 51 && y >= 33 && y <= 37) return rgb(85, 63, 38);
+    if (y > 52 && (x - 12) % 13 < 3) return rgb(188, 190, 186);
+    return rgb(clamp(151 + j), clamp(156 + j), clamp(155 + j));
+  }),
+  9: makeTex((x, y) => {                      // betonowe schody i biala balustrada
+    const step = Math.floor((63 - y) / 9), edge = (63 - y) % 9;
+    const j = jitter(x, y, 12);
+    if (edge < 2) return rgb(36, 40, 42);
+    if (y > 18 + step * 2) return rgb(clamp(116 + j), clamp(118 + j), clamp(114 + j));
+    const rail = Math.abs(y - (49 - x * 0.55)) < 2 || (x % 13 < 2 && y < 48);
+    if (rail) return rgb(225, 226, 220);
+    return rgb(clamp(226 + j), clamp(227 + j), clamp(222 + j));
+  }),
 };
 
 // sprite z tekstu: znak -> kolor, '.' = przezroczysty

@@ -27,7 +27,7 @@ Klawisze, głośność, czułość myszy i FOV zmienisz w menu (Ustawienia). Zap
 
 ## Mechanika
 
-- 3 poziomy: Parter ZSTI, Biblioteka, Stołówka (boss).
+- 4 poziomy: Parter ZSTI, Biblioteka, Korytarze II piętra, Stołówka (boss).
 - Trzy typy wrogów: zwykły bug, szybki glitch, boss.
 - Wrogowie śpią, dopóki nie zobaczą gracza. Ściany blokują strzały i widok.
 - XP za każdego buga. Awans daje więcej HP, a co drugi poziom mocniejszy strzał.
