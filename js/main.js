@@ -15,6 +15,16 @@ let autoplay = false, apTick = 0;                     // autogra (przycisk w men
 let botSpeed = 1;                                     // mnoznik tempa symulacji (bot przyspiesza gre)
 let botIntent = null;                                 // gdy ustawione, zastepuje klawiature (bot)
 
+// Wszystkie zewnetrzne PNG sa gotowe przed pokazaniem menu. Dzięki temu renderer nigdy
+// nie musi przez kilka klatek podmieniac nauczyciela proceduralnym klockiem zastepczym.
+const worldSpriteAssets = [GUIDE_NPC.def.sprite, ...TEACHERS.map(t => teacherAsset(t.sprite)), ...Object.values(STAIR_ICON_ASSETS)];
+const teacherSceneImages = [GUIDE_NPC.def.portrait, 'assets/teachers/dyrektor1.png', 'assets/zlota-tarcza.png',
+  ...TEACHERS.flatMap(t => [teacherAsset(t.sprite), teacherAsset(t.portrait)])];
+const visualAssetsReady = Promise.all([
+  preloadExternalSprites(worldSpriteAssets),
+  preloadSceneImages(teacherSceneImages),
+]);
+
 // klawisze w dialogach i walce (strzalki i WASD, Z/Enter/Spacja, X)
 const SCENE_KEYS = {
   ArrowLeft: 'left', KeyA: 'left', ArrowRight: 'right', KeyD: 'right', ArrowUp: 'up', KeyW: 'up', ArrowDown: 'down', KeyS: 'down',
@@ -409,7 +419,8 @@ window.raid = {
   action: a => ui.onAction(a),
 };
 
-showScreen('main');
+showScreen('loading');
+visualAssetsReady.then(() => { if (scene === 'menu') showScreen('main'); });
 playMusic('menu');
 const onFirstAudioInteraction = () => {
   audioInit();

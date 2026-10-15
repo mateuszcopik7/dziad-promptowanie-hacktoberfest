@@ -6,11 +6,25 @@ const BATTLE_S = 2, BATTLE_BX = 80, BATTLE_BY = 150;           // skala i pozycj
 const C_WHITE = '#fff', C_ORANGE = '#ff9a1f', C_YELLOW = '#ffe600', C_RED = '#ff2a2a';
 const sceneImageCache = {};
 
-function sceneImage(path) {
-  if (!path || typeof Image === 'undefined') return null;
-  if (!sceneImageCache[path]) { const img = new Image(); img.src = path; sceneImageCache[path] = img; }
-  return sceneImageCache[path].complete && sceneImageCache[path].naturalWidth ? sceneImageCache[path] : null;
+function loadSceneImage(path) {
+  if (!path || typeof Image === 'undefined') return { img: null, promise: Promise.resolve(false) };
+  if (!sceneImageCache[path]) {
+    const img = new Image();
+    const entry = sceneImageCache[path] = { img, promise: new Promise(resolve => {
+      img.onload = () => resolve(true);
+      img.onerror = () => resolve(false);
+    }) };
+    img.src = path;
+  }
+  return sceneImageCache[path];
 }
+
+function sceneImage(path) {
+  const entry = loadSceneImage(path), img = entry.img;
+  return img && img.complete && img.naturalWidth ? img : null;
+}
+
+function preloadSceneImages(paths) { return Promise.all([...new Set(paths.filter(Boolean))].map(path => loadSceneImage(path).promise)); }
 
 function drawImageContain(g, img, x, y, w, h) {
   const scale = Math.min(w / img.width, h / img.height), dw = img.width * scale, dh = img.height * scale;

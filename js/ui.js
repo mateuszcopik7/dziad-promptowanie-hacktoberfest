@@ -25,6 +25,10 @@ const stats = d => `
   <p class="stats">Czas ${d.time} · Poziom gracza ${d.level} · Sale pokonane ${d.rooms}${d.secret ? ' · SEKRET 404 ODKRYTY' : ''}</p>`;
 
 const SCREENS = {
+  loading: () => `
+    <h2>Ładowanie szkoły…</h2>
+    <p class="text">Przygotowuję sylwetki i portrety nauczycieli.</p>`,
+
   main: () => `
     <h1>GLIWICE RAID</h1>
     <p class="sub">Przywróć prąd. Uwolnij nauczycieli. Ocal ZSTI.</p>

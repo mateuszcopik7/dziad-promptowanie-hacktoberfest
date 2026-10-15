@@ -206,9 +206,15 @@ const ICONS = {
 };
 
 const iconCache = {};
+const STAIR_ICON_ASSETS = {
+  stairsUp: 'assets/icons/stairs-up.png',
+  stairsDown: 'assets/icons/stairs-down.png',
+};
 
 function iconSprite(name) {
   if (!ICONS[name]) return ICONS.bug;
+  const generated = externalSprite(STAIR_ICON_ASSETS[name]);
+  if (generated) return generated;
   if (!iconCache[name]) iconCache[name] = ICONS[name];
   return iconCache[name];
 }

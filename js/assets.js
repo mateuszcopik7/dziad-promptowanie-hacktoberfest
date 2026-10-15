@@ -125,10 +125,11 @@ function makeSprite(rows, pal) {
 // Zewnetrzne grafiki nauczycieli sa ladowane raz i zamieniane na format raycastera.
 // Czarne tlo dostarczonych PNG traktujemy jak przezroczystosc, bez modyfikowania plikow zrodlowych.
 const externalSpriteCache = {};
-function externalSprite(path) {
-  if (!path || typeof Image === 'undefined') return null;
+function loadExternalSprite(path) {
+  if (!path || typeof Image === 'undefined') return { sprite: null, promise: Promise.resolve(false) };
   if (!externalSpriteCache[path]) {
-    const entry = externalSpriteCache[path] = { sprite: null }, img = new Image();
+    let finish;
+    const entry = externalSpriteCache[path] = { sprite: null, failed: false, promise: new Promise(resolve => { finish = resolve; }) }, img = new Image();
     img.onload = () => {
       const maxH = 256, scale = Math.min(1, maxH / img.height), w = Math.max(1, Math.round(img.width * scale)), h = Math.max(1, Math.round(img.height * scale));
       const c = document.createElement('canvas'); c.width = w; c.height = h;
@@ -151,11 +152,16 @@ function externalSprite(path) {
         if (a > 24 && !outside[i]) data[i] = rgb(r, g, b);
       }
       entry.sprite = { w, h, data };
+      finish(true);
     };
+    img.onerror = () => { entry.failed = true; finish(false); };
     img.src = path;
   }
-  return externalSpriteCache[path].sprite;
+  return externalSpriteCache[path];
 }
+
+function externalSprite(path) { return loadExternalSprite(path).sprite; }
+function preloadExternalSprites(paths) { return Promise.all([...new Set(paths.filter(Boolean))].map(path => loadExternalSprite(path).promise)); }
 
 const BUG_ROWS = [
   '...a........a...',
