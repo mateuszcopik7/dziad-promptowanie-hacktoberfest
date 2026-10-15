@@ -243,33 +243,52 @@ function drawPortrait(g, x, y, color, face, portrait, name, tick = 0) {
 }
 
 // color: kolor portretu NPC
+// uklad opcji wyboru: jeden wiersz, gdy sie mieszcza, inaczej jedna pod druga
+function dialogueOptionsLayout(g, options, maxW) {
+  g.font = '20px monospace';
+  const widths = options.map(o => g.measureText('* ' + o.label).width), gap = 36;
+  const oneRow = widths.reduce((a, w) => a + w, 0) + gap * (options.length - 1) <= maxW;
+  let x = 0;
+  return options.map((o, i) => {
+    const pos = oneRow ? { dx: x, row: 0 } : { dx: 0, row: i };
+    x += widths[i] + gap;
+    return pos;
+  });
+}
+
+// pudelko dialogu rosnie w gore, gdy tekst i opcje sie nie mieszcza: nic na siebie nie nachodzi
 function drawDialogueBox(g, d, color, tick) {
-  const bx = 24, by = 330, bw = 592, bh = 138, face = pageFace(d);
+  const bx = 24, bw = 592, textX = bx + 120, textW = bw - 150, lineH = 28, optH = 28, face = pageFace(d);
+  const lines = wrapChars(g, allChars(d), textW), shown = visibleChars(d).length;
+  const choice = d.phase === 'choice', layout = choice ? dialogueOptionsLayout(g, d.options, textW) : [];
+  const optRows = choice ? Math.max(...layout.map(o => o.row)) + 1 : 0;
+  const textH = lines.length * lineH, bh = Math.max(138, 22 + textH + (choice ? 10 + optRows * optH : 0) + 18);
+  const by = 468 - bh;
   g.fillStyle = '#000'; g.fillRect(bx, by, bw, bh);
   g.strokeStyle = C_WHITE; g.lineWidth = 6; g.strokeRect(bx, by, bw, bh);
   drawPortrait(g, bx + 18, by + 22, color, face, d.portrait, d.npc, tick);
-  const lines = wrapChars(g, allChars(d), bw - 150), shown = visibleChars(d).length;
   g.font = '22px monospace'; g.textBaseline = 'top';
   let k = 0;
   lines.forEach((ln, li) => {
-    let x = bx + 120;
+    let x = textX;
     ln.forEach(c => {
       if (k < shown) {
         const sx = c.shake ? (Math.random() - 0.5) * 3 : 0, sy = c.shake ? (Math.random() - 0.5) * 3 : 0;
-        g.fillStyle = c.color || C_WHITE; g.fillText(c.ch, x + sx, by + 22 + li * 28 + sy);
+        g.fillStyle = c.color || C_WHITE; g.fillText(c.ch, x + sx, by + 22 + li * lineH + sy);
       }
       x += 13.2; k++;
     });
   });
-  g.textBaseline = 'alphabetic';
   if (d.phase === 'wait' && d.options.length <= 1 && Math.floor(tick / 20) % 2 === 0) { g.fillStyle = C_WHITE; g.fillRect(bx + bw - 34, by + bh - 26, 14, 10); }
-  if (d.phase === 'choice') {
+  if (choice) {
+    const oy0 = by + 22 + textH + 10;
     d.options.forEach((o, i) => {
-      const ox = bx + 140 + i * 210, oy = by + bh - 34;
-      if (d.cursor === i) { g.fillStyle = C_RED; g.fillRect(ox - 22, oy + 4, 12, 10); }
+      const ox = textX + 20 + layout[i].dx, oy = oy0 + layout[i].row * optH;
+      if (d.cursor === i) { g.fillStyle = C_RED; g.fillRect(ox - 18, oy + 6, 12, 10); }
       g.fillStyle = d.cursor === i ? C_YELLOW : C_WHITE; g.font = '20px monospace'; g.fillText('* ' + o.label, ox, oy);
     });
   }
+  g.textBaseline = 'alphabetic';
   g.fillStyle = C_WHITE; g.font = 'bold 13px monospace'; g.fillText(d.npc, bx + 20, by - 8);
 }
 
