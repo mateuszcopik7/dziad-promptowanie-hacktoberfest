@@ -10,6 +10,7 @@ const lctx = low.getContext('2d');
 const img = lctx.createImageData(W, H);
 const buf = new Uint32Array(img.data.buffer);
 const zbuf = new Float32Array(W);
+let uiScale = 1;                    // skala ekranu logicznego 960x600 do rzeczywistych pikseli canvasu
 let showMap = 1;                    // minimapa: 0 wylaczona, 1 mala, 2 duza (klawisz M)
 
 // oswietlenie: ciemny budynek, krotki zasieg widzenia (wszystko ginie w ciemnosci), latarka swieci dalej i jasniej w srodku ekranu
@@ -19,6 +20,19 @@ const NEAR = 2;                     // do tej odleglosci pelna jasnosc
 const FAR = 13;                     // bez latarki wszystko dalej niz to jest czarne
 const FAR_FLASH = 22;               // zasieg w stozku latarki
 const FOG = 0.03;
+
+// dopasowuje rozdzielczosc canvasu do rozmiaru okna (ostry tekst HUD na kazdym monitorze) i ustawia --u dla menu
+function fitCanvas() {
+  const dpr = window.devicePixelRatio || 1, r = canvas.getBoundingClientRect();
+  const w = Math.max(320, Math.round(r.width * dpr)), h = Math.max(200, Math.round(r.height * dpr));
+  if (canvas.width !== w || canvas.height !== h) {
+    canvas.width = w; canvas.height = h;
+    document.documentElement.style.setProperty('--u', (r.width / 960) + 'px');
+  }
+  uiScale = canvas.width / 960;
+  sctx.setTransform(uiScale, 0, 0, uiScale, 0, 0);
+  sctx.imageSmoothingEnabled = false;
+}
 
 function cameraOf(p) {
   const k = Math.tan(settings.fov * Math.PI / 360), dx = Math.cos(p.angle), dy = Math.sin(p.angle);
@@ -198,16 +212,11 @@ function collectLabels(g, cam) {
   });
 }
 
-// rece, pistolet i latarka z js/weapon-art.js
+// rece i pistolet z js/weapon-art.js (latarka nie ma modelu: F tylko zmienia oswietlenie)
 function drawFirstPerson(g) {
   const p = g.player, bob = g.moving ? Math.sin(g.walk * 0.22) * 2.5 : 0;
   if (p.weapon) drawPistol(lctx, W, H, g.flash > 0 ? 4 : 0, g.flash, bob);
-  else if (p.flashlight) {                              // latarka w prawej rece: rysujemy tylko lewa piesc
-    lctx.save(); lctx.beginPath(); lctx.rect(0, 0, W * 0.5, H); lctx.clip();
-    drawHands(lctx, W, H, bob, 0);
-    lctx.restore();
-  } else drawHands(lctx, W, H, bob, 0);
-  if (p.flashlight) drawFlashlight(lctx, W, H, true, bob, p.weapon ? undefined : W / 2 + 53);   // bez broni: latarka dokladnie w miejscu prawej piesci
+  else drawHands(lctx, W, H, bob, 0);
   if (p.weapon) { lctx.fillStyle = '#fff'; lctx.fillRect(W / 2 - 1, H / 2 - 4, 2, 8); lctx.fillRect(W / 2 - 4, H / 2 - 1, 8, 2); }
 }
 
@@ -361,6 +370,7 @@ function drawVignette() {
 }
 
 function render(g, withHud) {
+  fitCanvas();
   const cam = cameraOf(g.player);
   setupColumns(g); renderFloorCeil(g, cam); renderWalls(g, cam); renderSprites(g, cam);
   collectLabels(g, cam);

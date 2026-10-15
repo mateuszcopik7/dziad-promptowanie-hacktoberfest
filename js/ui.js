@@ -53,6 +53,7 @@ const SCREENS = {
       <div class="row"><span>${label}</span>
         <button class="key" data-k="${id}">${capturing === id ? 'naciśnij klawisz…' : keyLabel(settings.keys[id])}</button></div>`).join('')}
     <p class="hint">Zajęty klawisz zamienia się miejscami. Zarezerwowane: Esc, M, R, E, F, H, Z, X, Enter.</p>
+    <button data-a="fullscreen">Pełny ekran (włącz / wyłącz)</button>
     <button data-a="resetSettings">Przywróć domyślne</button>
     <button data-a="back">Wstecz</button>`,
 

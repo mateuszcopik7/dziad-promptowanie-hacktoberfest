@@ -165,6 +165,7 @@ ui.onAction = action => {
     case 'resume': resume(); break;
     case 'retry': respawn(game); hideScreen(); backToPlay(); break;
     case 'menu': toMenu(); break;
+    case 'fullscreen': document.fullscreenElement ? document.exitFullscreen() : document.documentElement.requestFullscreen().catch(() => {}); break;
   }
 };
 
@@ -253,18 +254,19 @@ function updateEncounter() {
 }
 
 function drawOverlays() {
+  const k = uiScale;
+  sctx.setTransform(k, 0, 0, k, 0, 0);
   if (scene === 'dialogue') {
     sctx.fillStyle = 'rgba(0,0,0,.4)'; sctx.fillRect(0, 0, W * SCALE, H * SCALE);
-    sctx.save(); sctx.setTransform(SCENE_ZOOM, 0, 0, SCENE_ZOOM, SCENE_OFFSET_X, 0);
+    sctx.setTransform(k * SCENE_ZOOM, 0, 0, k * SCENE_ZOOM, k * SCENE_OFFSET_X, 0);
     drawDialogueBox(sctx, dialogue, dialogueColor, tick);
-    sctx.restore();
   } else if (scene === 'encounter') {
     if (enc.phase === 'fadeOut' || enc.phase === 'fadeIn') { sctx.fillStyle = `rgba(0,0,0,${enc.fade})`; sctx.fillRect(0, 0, W * SCALE, H * SCALE); return; }
     sctx.fillStyle = '#000'; sctx.fillRect(0, 0, W * SCALE, H * SCALE);
-    sctx.save(); sctx.setTransform(SCENE_ZOOM, 0, 0, SCENE_ZOOM, SCENE_OFFSET_X, 0);
+    sctx.setTransform(k * SCENE_ZOOM, 0, 0, k * SCENE_ZOOM, k * SCENE_OFFSET_X, 0);
     drawEncounter(sctx, enc, tick);
-    sctx.restore();
   }
+  sctx.setTransform(k, 0, 0, k, 0, 0);
 }
 
 function frame(now) {

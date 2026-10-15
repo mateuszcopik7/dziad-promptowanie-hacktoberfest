@@ -1,7 +1,10 @@
-html, body { margin: 0; height: 100%; background: #0d0d12; color: #eee; font-family: monospace; }
+/* Skala interfejsu: js/render.js ustawia --u (px na jednostke ekranu logicznego 960x600) przy kazdej zmianie rozmiaru okna.
+   Rozmiary menu w em, wiec rosna razem z oknem na duzych monitorach i zmniejszaja sie na malych. */
+:root { --u: 1px; }
+html, body { margin: 0; height: 100%; background: #0d0d12; color: #eee; font-family: monospace; overflow: hidden; }
 body { display: flex; align-items: center; justify-content: center; }
 
-#game { position: relative; width: min(100vw, 160vh); aspect-ratio: 960 / 600; background: #000; }
+#game { position: relative; width: min(100vw, 160vh); aspect-ratio: 960 / 600; background: #000; font-size: max(10px, calc(16 * var(--u))); }
 canvas { display: block; width: 100%; height: 100%; image-rendering: pixelated; cursor: crosshair; }
 
 #ui {
@@ -10,26 +13,26 @@ canvas { display: block; width: 100%; height: 100%; image-rendering: pixelated; 
 }
 #ui[hidden] { display: none; }
 
-.panel { width: min(420px, 90%); max-height: 96%; overflow: auto; padding: 20px 24px; text-align: center;
-  background: #16161f; border: 2px solid #3a3a4d; box-sizing: border-box; }
-h1 { margin: 0 0 4px; font-size: 40px; letter-spacing: 3px; color: #4ad66d; }
-h2 { margin: 0 0 12px; font-size: 26px; }
-h3 { margin: 14px 0 6px; font-size: 15px; color: #aaa; text-transform: uppercase; }
+.panel { width: min(27em, 92%); max-height: 94%; overflow: auto; padding: 1.2em 1.5em; text-align: center;
+  background: #16161f; border: .12em solid #3a3a4d; box-sizing: border-box; }
+h1 { margin: 0 0 .1em; font-size: 2.5em; letter-spacing: .08em; color: #4ad66d; }
+h2 { margin: 0 0 .5em; font-size: 1.6em; }
+h3 { margin: .9em 0 .4em; font-size: .95em; color: #aaa; text-transform: uppercase; }
 .good { color: #4ad66d; }
 .bad { color: #ff6b6b; }
-.sub, .foot, .hint { color: #999; font-size: 13px; }
-.sub { margin: 0 0 18px; }
-.foot { margin: 16px 0 0; }
-.text { text-align: left; font-size: 14px; line-height: 1.45; margin: 8px 0; }
+.sub, .foot, .hint { color: #999; font-size: .85em; }
+.sub { margin: 0 0 1.1em; }
+.foot { margin: 1em 0 0; }
+.text { text-align: left; font-size: .9em; line-height: 1.45; margin: .5em 0; }
 .keys { color: #bbb; }
 .stats { line-height: 1.6; color: #ccc; }
 
-button { display: block; width: 100%; margin: 8px 0; padding: 10px; font: bold 16px monospace; color: #eee;
-  background: #262636; border: 2px solid #4a4a63; cursor: pointer; }
+button { display: block; width: 100%; margin: .5em 0; padding: .65em; font: bold 1em monospace; color: #eee;
+  background: #262636; border: .12em solid #4a4a63; cursor: pointer; }
 button:hover, button:focus-visible { background: #34344a; border-color: #4ad66d; outline: none; }
 
-.row { display: flex; align-items: center; justify-content: space-between; gap: 10px; margin: 8px 0; font-size: 14px; text-align: left; }
+.row { display: flex; align-items: center; justify-content: space-between; gap: .6em; margin: .5em 0; font-size: .9em; text-align: left; }
 .row span { flex: 1; }
 .row input[type=range] { flex: 1.3; accent-color: #4ad66d; }
-.row output { width: 44px; text-align: right; color: #4ad66d; }
-.row button.key { width: 150px; margin: 0; padding: 5px; font-size: 13px; }
+.row output { width: 3em; text-align: right; color: #4ad66d; }
+.row button.key { width: 10em; margin: 0; padding: .35em; font-size: .85em; }
