@@ -10,6 +10,7 @@ const lctx = low.getContext('2d');
 const img = lctx.createImageData(W, H);
 const buf = new Uint32Array(img.data.buffer);
 const zbuf = new Float32Array(W);
+const decorDepth = new Float32Array(W * H);       // pelny bufor glebi dla nieruchomych mebli 3D
 let uiScale = 1;                    // skala ekranu logicznego 960x600 do rzeczywistych pikseli canvasu
 let showMap = 1;                    // minimapa: 0 wylaczona, 1 mala, 2 duza (klawisz M)
 
@@ -134,8 +135,7 @@ function spriteList(g) {
     list.push({ x: n.x, y: n.y, spr: custom || npcSprite(def.look, def.color), scale: custom ? 1.15 : (def.look && def.look.scale) || 0.85, name: def.name, shadow: true, marker: npcMarker(g.qs, QUEST_DEFS, g.npcDefs, n.id) });
   });
   g.world.floors[g.floor].decor.forEach(d => {
-    if (d.kind === 'bench') list.push({ x: d.x, y: d.y, spr: SPRITES.bench, scale: 0.34 });
-    else if (d.kind === 'pufa') list.push({ x: d.x, y: d.y, spr: pufaSprite(d.color), scale: 0.26 });
+    if (d.kind === 'pufa') list.push({ x: d.x, y: d.y, spr: pufaSprite(d.color), scale: 0.26 });
     else if (d.kind === 'plant') list.push({ x: d.x, y: d.y, spr: SPRITES.plant, scale: 0.55 });
   });
   const seen = new Set();
@@ -171,7 +171,7 @@ function renderSprites(g, cam) {
       const tcx = Math.floor((x - x0) * s.spr.w / w);
       for (let y = Math.max(0, y0); y < Math.min(H, floorY); y++) {
         const c = s.spr.data[Math.floor((y - y0) * s.spr.h / h) * s.spr.w + tcx];
-        if (!c) continue;
+        if (!c || ty >= decorDepth[y * W + x]) continue;
         buf[y * W + x] = s.hit > 0 ? rgb(255, 255, 255) : shade(c, sh);
       }
     }
@@ -182,6 +182,66 @@ function renderSprites(g, cam) {
       }
     }
     if ((s.marker || s.name) && scrX >= 0 && scrX < W && ty < zbuf[scrX]) markers.push({ x: scrX, y: y0 - 3, ch: s.marker || '', name: s.name, ty });
+  }
+}
+
+// Lawki nie sa billboardami: ich wierzcholki zyja w swiecie, wiec perspektywa zmienia sie przy obchodzeniu.
+// Proste prostopadlosciany (siedzisko, listwy oparcia, nogi) daja tani efekt pseudo-3D.
+function projectDecorPoint(cam, p, x, y, z) {
+  const inv = 1 / (cam.planeX * cam.dirY - cam.dirX * cam.planeY), sx = x - p.x, sy = y - p.y;
+  const tx = inv * (cam.dirY * sx - cam.dirX * sy), ty = inv * (-cam.planeY * sx + cam.planeX * sy);
+  return { x: W / 2 * (1 + tx / ty), y: H / 2 - (z - 0.5) * H / ty, d: ty };
+}
+
+function decorTriangle(g, a, b, c, color, faceLight) {
+  if (a.d <= 0.08 || b.d <= 0.08 || c.d <= 0.08) return;
+  const minX = Math.max(0, Math.floor(Math.min(a.x, b.x, c.x))), maxX = Math.min(W - 1, Math.ceil(Math.max(a.x, b.x, c.x)));
+  const minY = Math.max(0, Math.floor(Math.min(a.y, b.y, c.y))), maxY = Math.min(H - 1, Math.ceil(Math.max(a.y, b.y, c.y)));
+  const area = (b.x - a.x) * (c.y - a.y) - (b.y - a.y) * (c.x - a.x);
+  if (Math.abs(area) < 0.01) return;
+  for (let y = minY; y <= maxY; y++) for (let x = minX; x <= maxX; x++) {
+    const px = x + 0.5, py = y + 0.5;
+    const wa = ((b.x - px) * (c.y - py) - (b.y - py) * (c.x - px)) / area;
+    const wb = ((c.x - px) * (a.y - py) - (c.y - py) * (a.x - px)) / area;
+    const wc = 1 - wa - wb;
+    if (wa < -0.001 || wb < -0.001 || wc < -0.001) continue;
+    const d = 1 / (wa / a.d + wb / b.d + wc / c.d), at = y * W + x;
+    if (d >= zbuf[x] || d >= decorDepth[at]) continue;
+    decorDepth[at] = d;
+    buf[at] = shade(color, lightAt(g, x, d) * faceLight | 0);
+  }
+}
+
+function decorBox(g, cam, x0, x1, y0, y1, z0, z1, color) {
+  const p = g.player, v = [
+    projectDecorPoint(cam, p, x0, y0, z0), projectDecorPoint(cam, p, x1, y0, z0),
+    projectDecorPoint(cam, p, x1, y1, z0), projectDecorPoint(cam, p, x0, y1, z0),
+    projectDecorPoint(cam, p, x0, y0, z1), projectDecorPoint(cam, p, x1, y0, z1),
+    projectDecorPoint(cam, p, x1, y1, z1), projectDecorPoint(cam, p, x0, y1, z1),
+  ];
+  const faces = [
+    [4, 5, 6, 7, 1], [0, 3, 2, 1, 0.55],
+    [0, 1, 5, 4, 0.82], [3, 7, 6, 2, 0.72],
+    [0, 4, 7, 3, 0.66], [1, 2, 6, 5, 0.75],
+  ];
+  for (const [a, b, c, d, sh] of faces) {
+    decorTriangle(g, v[a], v[b], v[c], color, sh);
+    decorTriangle(g, v[a], v[c], v[d], color, sh);
+  }
+}
+
+function renderFixedBenches(g, cam) {
+  decorDepth.fill(Infinity);
+  const wood = rgb(206, 140, 74), metal = rgb(40, 84, 168);
+  for (const b of g.world.floors[g.floor].decor.filter(d => d.kind === 'bench')) {
+    const wall = b.y < 28 ? -1 : 1, back = b.y + wall * 0.19;
+    decorBox(g, cam, b.x - 0.9, b.x + 0.9, b.y - 0.22, b.y + 0.22, 0.28, 0.38, wood); // siedzisko
+    decorBox(g, cam, b.x - 0.9, b.x + 0.9, back - 0.035, back + 0.035, 0.47, 0.58, wood);
+    decorBox(g, cam, b.x - 0.9, b.x + 0.9, back - 0.035, back + 0.035, 0.68, 0.80, wood);
+    for (const lx of [b.x - 0.72, b.x + 0.72]) {
+      decorBox(g, cam, lx - 0.045, lx + 0.045, b.y - 0.17, b.y - 0.08, 0.02, 0.3, metal);
+      decorBox(g, cam, lx - 0.045, lx + 0.045, back - 0.04, back + 0.04, 0.3, 0.73, metal);
+    }
   }
 }
 
@@ -381,7 +441,7 @@ function drawVignette() {
 function render(g, withHud) {
   fitCanvas();
   const cam = cameraOf(g.player);
-  setupColumns(g); renderFloorCeil(g, cam); renderWalls(g, cam); renderSprites(g, cam);
+  setupColumns(g); renderFloorCeil(g, cam); renderWalls(g, cam); renderFixedBenches(g, cam); renderSprites(g, cam);
   collectLabels(g, cam);
   lctx.putImageData(img, 0, 0);
   drawFirstPerson(g);
