@@ -8,7 +8,7 @@ Hacktoberfest Hack Day Gliwice 2026 · temat **Automation & Emulation**
 
 ![Bot przechodzi grę](docs/demo/bot-speedrun.gif)
 
-*Bot gra sam: rozmowy, questy, schody między piętrami. Nagranie przyspieszone 6x.*
+*Bot przechodzi całą grę sam w 2,5 minuty: rozmowy, questy, schody, walki, finał. Nagranie przyspieszone 10x.*
 
 ## Co tu jest
 
@@ -26,6 +26,10 @@ Hacktoberfest Hack Day Gliwice 2026 · temat **Automation & Emulation**
 | Start: mentorka uczy sterowania | Eksploracja szkoły |
 | --- | --- |
 | ![Intro](docs/demo/intro.gif) | ![Eksploracja](docs/demo/explore.gif) |
+
+| Walka z Dyrektorem Bugów: bot unika pocisków | Koniec gry |
+| --- | --- |
+| ![Walka](docs/demo/battle.gif) | ![Wygrana](docs/demo/victory.png) |
 
 ![Menu](docs/demo/menu.png)
 
