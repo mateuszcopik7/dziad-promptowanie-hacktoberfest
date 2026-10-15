@@ -28,6 +28,57 @@ function addHitFlash(rgb, alpha) {
   hitFlashAlpha = Math.max(hitFlashAlpha, alpha);
 }
 
+// Lekkie pikselowe czasteczki: kilka kwadratow zamiast kosztownych obrazkow/filtrów.
+// Limit chroni renderer przed zapchaniem przy szybkiej autogrze.
+const particles = [];
+function spawnParticles(x, y, colors, count = 12, force = 4, gravity = 0.12, life = 28) {
+  for (let i = 0; i < count && particles.length < 180; i++) {
+    const a = Math.random() * Math.PI * 2, speed = force * (0.35 + Math.random() * 0.65);
+    particles.push({
+      x, y, vx: Math.cos(a) * speed, vy: Math.sin(a) * speed - force * 0.25,
+      gravity, life: life * (0.65 + Math.random() * 0.5), maxLife: life,
+      size: 2 + Math.floor(Math.random() * 4), color: colors[i % colors.length],
+    });
+  }
+}
+
+function battlePlayerPoint() {
+  if (!enc || !enc.battle) return { x: 480, y: 390 };
+  return {
+    x: SCENE_OFFSET_X + (BATTLE_BX + enc.battle.heart.x * BATTLE_S) * SCENE_ZOOM,
+    y: (BATTLE_BY + enc.battle.heart.y * BATTLE_S) * SCENE_ZOOM,
+  };
+}
+
+function spawnEventParticles(ev, inBattle) {
+  if (ev === 'crit') spawnParticles(480, 112, ['#fff4a8', '#ffd700', '#ff9a1f'], 28, 8, 0.18, 38);
+  else if (ev === 'hit') spawnParticles(480, inBattle ? 125 : 285, ['#ffffff', '#ffe080', '#ff7a35'], inBattle ? 15 : 8, 5, 0.14, 25);
+  else if (ev === 'kill') spawnParticles(480, 275, ['#ffd700', '#ff7a35', '#ffffff'], 26, 7, 0.16, 36);
+  else if (ev === 'hurt') {
+    const p = inBattle ? battlePlayerPoint() : { x: 480, y: 330 };
+    spawnParticles(p.x, p.y, ['#ff3030', '#ff7555', '#ffffff'], 18, 6, 0.18, 30);
+  } else if (ev === 'heal' || ev === 'pickup' || ev === 'levelup') {
+    spawnParticles(480, 505, ev === 'levelup' ? ['#ffe600', '#ffffff', '#4ad66d'] : ['#4ad66d', '#9fffb8', '#ffffff'], ev === 'levelup' ? 24 : 12, 5, -0.03, 34);
+  }
+}
+
+function drawParticles() {
+  for (let i = particles.length - 1; i >= 0; i--) {
+    const p = particles[i];
+    p.x += p.vx; p.y += p.vy; p.vy += p.gravity; p.vx *= 0.97; p.life--;
+    if (p.life <= 0) { particles.splice(i, 1); continue; }
+    const alpha = Math.min(1, p.life / Math.max(1, p.maxLife * 0.35));
+    sctx.globalAlpha = alpha;
+    sctx.fillStyle = p.color;
+    sctx.fillRect(Math.round(p.x), Math.round(p.y), p.size, p.size);
+    if (p.size >= 4 && p.life > p.maxLife * 0.55) {
+      sctx.fillRect(Math.round(p.x - p.size), Math.round(p.y + p.size / 2), p.size * 3, 1);
+      sctx.fillRect(Math.round(p.x + p.size / 2), Math.round(p.y - p.size), 1, p.size * 3);
+    }
+  }
+  sctx.globalAlpha = 1;
+}
+
 // Wszystkie zewnetrzne PNG sa gotowe przed pokazaniem menu. Dzięki temu renderer nigdy
 // nie musi przez kilka klatek podmieniac nauczyciela proceduralnym klockiem zastepczym.
 const worldSpriteAssets = [GUIDE_NPC.def.sprite, ...TEACHERS.map(t => teacherAsset(t.sprite)), ...Object.values(STAIR_ICON_ASSETS)];
@@ -330,6 +381,7 @@ function updatePlay() {
       addScreenShake(7, 10);
       addHitFlash('255, 30, 30', 0.38);
     }
+    spawnEventParticles(ev, false);
     playSfx(ev);
   });
   game.events.length = 0;
@@ -382,6 +434,7 @@ function updateEncounter() {
         addScreenShake(4, 7);
         addHitFlash('255, 255, 255', 0.2);
       }
+      spawnEventParticles(ev, true);
       playSceneSfx(ev);
     });
     acc -= STEP_MS;
@@ -426,6 +479,8 @@ function drawOverlays() {
       sctx.fillRect(0, 0, W * SCALE, H * SCALE);
     }
   }
+
+  drawParticles();
 
   // Rozbłysk uderzenia / trafienia krytycznego
   if (hitFlashAlpha > 0.01) {
