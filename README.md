@@ -1,16 +1,25 @@
 # Gliwice Raid
 
-Raycaster w stylu Doom w czystym HTML/JS, bez buildu i bez zależności. Bugi opanowały ZSTI Gliwice, a Ty je naprawiasz. Projekt na Hacktoberfest Hack Day Gliwice 2026 (temat: Automation & Emulation).
+Gra w stylu Doom (raycaster w czystym HTML/JS, bez buildu i bez zależności), której akcja dzieje się w ZSTI Gliwice. Jeden wielki budynek z czterema piętrami, odtworzony ze zdjęć. Rozmowy z NPC i walki z bossami w salach są w stylu Undertale. Projekt na Hacktoberfest Hack Day Gliwice 2026 (temat: Automation & Emulation).
 
 ## Uruchomienie
 
 Gra online: https://mateuszcopik7.github.io/dziad-promptowanie-hacktoberfest/
 
-Lokalnie otwórz `index.html` w przeglądarce albo uruchom lokalny serwer:
+Lokalnie otwórz `index.html` w przeglądarce albo uruchom serwer:
 
 ```bash
 python3 -m http.server 8000
 ```
+
+## Przebieg gry
+
+- Zaczynasz w holu głównym z samymi rękami i latarką pod `F`.
+- Na korytarzach stoją NPC (fikcyjni uczniowie i pracownicy). Rozmowa pod `E`, nad głową mają `!` (nowy quest) albo `?` (do oddania).
+- Quest ze strzelaniem daje pistolet i wypuszcza bugi na korytarz. Po oddaniu questa broń znika.
+- Piętra łączą klatki schodowe. Wejście na schody otwiera wybór: dokąd idziesz.
+- Wejście w drzwi sali: ekran gaśnie, nauczyciel prosi o pomoc, potem walka turowa jak w Undertale: `FIGHT` (pasek timingu), `ACT`, `ITEM`, `MERCY`. Boss ginie albo można go oszczędzić, gdy nastrój dojdzie do 100.
+- Cel: odblokować aulę (łańcuch questów) i pokonać Dyrektora Bugów.
 
 ## Sterowanie
 
@@ -18,56 +27,50 @@ python3 -m http.server 8000
 | --- | --- |
 | Ruch | W / S / A / D |
 | Obrót | mysz albo strzałki |
-| Strzał | mysz albo spacja |
+| Strzał (gdy masz broń) | mysz albo spacja |
+| Rozmowa | E |
+| Latarka | F |
+| Zjedz kanapkę | H |
 | Pauza | Esc |
 | Minimapa | M |
-| Restart poziomu | R |
+| W rozmowie i walce | strzałki, Z / Enter potwierdź, X wstecz |
 
-Klawisze, głośność, czułość myszy i FOV zmienisz w menu (Ustawienia). Zapis w `localStorage`.
+Klawisze ruchu, głośność, czułość myszy i FOV zmienisz w menu (Ustawienia). Zapis w `localStorage`.
 
-## Mechanika
+## Mapa
 
-- 4 poziomy: Parter ZSTI, Biblioteka, Korytarze II piętra, Stołówka (boss).
-- Trzy typy wrogów: zwykły bug, szybki glitch, boss.
-- Wrogowie śpią, dopóki nie zobaczą gracza. Ściany blokują strzały i widok.
-- XP za każdego buga. Awans daje więcej HP, a co drugi poziom mocniejszy strzał.
-- Kanapki leczą, pendrive'y dają amunicję, zabity bug zwraca trochę amunicji.
-
-## Bot w Pythonie (Automation & Emulation)
-
-`bot/bot.py` gra za Ciebie. Uruchamia Chromium przez Playwright, klika menu, czyta stan gry z `window.raid.state()`, planuje trasę (BFS po siatce mapy), celuje i strzela. Sam zbiera pendrive'y, gdy brakuje amunicji, i kanapki, gdy brakuje zdrowia.
+Plan budynku jest w `mapa/` (PNG, SVG, `mapa.json`, opis i źródła w `mapa/OPIS.md`). `tools/build_world.py` zamienia `mapa/mapa.json` w `js/world-data.js` wczytywany przez grę. Parter to rekonstrukcja założona, piętra 1–3 oparto na zdjęciach.
 
 ```bash
-python3 -m venv .venv
-.venv/bin/pip install -r bot/requirements.txt
-.venv/bin/playwright install chromium
-.venv/bin/python bot/bot.py                      # lokalny index.html
-.venv/bin/python bot/bot.py --url https://mateuszcopik7.github.io/dziad-promptowanie-hacktoberfest/
+python3 tools/build_world.py
+python3 mapa/sprawdz.py
 ```
-
-Opcje: `--headless` (bez okna), `--rounds N` (ile razy przejść grę).
 
 ## Struktura
 
 | Plik | Zawartość |
 | --- | --- |
-| `js/game.js` | logika: poziomy, wrogowie, strzelanie, awanse (bez DOM) |
-| `js/render.js` | raycaster, sprite'y, HUD, minimapa |
-| `js/assets.js` | tekstury i sprite'y generowane w kodzie |
-| `js/audio.js` | dźwięki w WebAudio |
-| `js/settings.js` | ustawienia i klawisze |
-| `js/ui.js` | menu, ustawienia, pauza, ekrany końca poziomu |
-| `js/main.js` | pętla gry, wejście, `window.raid` (API dla bota) |
-| `bot/bot.py` | bot: Playwright, BFS, celowanie |
-| `tests/game.test.js` | testy logiki gry w Node |
-| `tests/test_bot.py` | testy decyzji bota |
+| `js/game.js` | logika świata: ruch, NPC, strzelanie, wrogowie, drzwi, schody (bez DOM) |
+| `js/world.js`, `js/world-data.js` | świat z mapy: siatki pięter, drzwi, schody |
+| `js/content.js` | NPC, questy, bossowie sal |
+| `js/quests.js` | silnik questów (kill, fetch, talk, nagrody, odblokowania) |
+| `js/dialogue.js` | dialogi w stylu Undertale: pisanie literami, znaczniki, wybory |
+| `js/battle.js` | walka turowa: FIGHT, ACT, ITEM, MERCY, unikanie pocisków |
+| `js/encounter.js` | spotkanie w sali: zaciemnienie, scenka, walka, wynik |
+| `js/scenes.js` | rysowanie dialogów i walki |
+| `js/render.js` | raycaster, sprite'y, latarka, HUD, minimapa |
+| `js/weapon-art.js` | ręce, pistolet i latarka (pixel art) |
+| `js/assets.js`, `js/audio.js`, `js/settings.js`, `js/ui.js`, `js/main.js` | tekstury, dźwięki, ustawienia, menu, pętla gry |
+| `bot/bot.py` | bot w Pythonie (Playwright), do dostosowania do nowej gry |
+| `tests/` | testy w Node (`*.test.js`) i Pythonie |
 
 ## Testy
 
 ```bash
-node tests/game.test.js
-.venv/bin/python -m unittest tests.test_bot
+for t in game quests battle dialogue encounter; do node tests/$t.test.js; done
 ```
+
+Strony testowe: `battle-test.html`, `dialogue-test.html`, `room-test.html`, `weapon-art-test.html`.
 
 ## Licencja
 
