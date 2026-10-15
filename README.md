@@ -23,13 +23,17 @@ Hacktoberfest Hack Day Gliwice 2026 · temat **Automation & Emulation**
 
 ## Demo
 
+Nagrania w normalnym albo zwolnionym tempie, żeby dało się przeczytać dialogi i menu.
+
 | Start: mentorka uczy sterowania | Eksploracja szkoły |
 | --- | --- |
 | ![Intro](docs/demo/intro.gif) | ![Eksploracja](docs/demo/explore.gif) |
 
-| Walka z Dyrektorem Bugów: bot unika pocisków | Koniec gry |
+| Wejście do sali: nauczyciel, ACT, unik | Walka z Dyrektorem Bugów |
 | --- | --- |
-| ![Walka](docs/demo/battle.gif) | ![Wygrana](docs/demo/victory.png) |
+| ![Sala](docs/demo/room.gif) | ![Walka](docs/demo/battle.gif) |
+
+![Wygrana](docs/demo/victory.png)
 
 ![Menu](docs/demo/menu.png)
 
