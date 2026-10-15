@@ -14,7 +14,7 @@ python3 -m http.server 8000
 
 ## Przebieg gry
 
-- Pietrzyk-Piotrowska wita gracza w holu i prowadzi pełny tutorial sterowania.
+- Pani Pietrzyk-Piotrwska (mentor) wita gracza w holu i prowadzi pełny tutorial sterowania.
 - Szkoła zaczyna bez prądu. Pierwsza misja prowadzi do interaktywnej skrzynki bezpieczników; latarka pod `F` działa awaryjnie.
 - Po przywróceniu zasilania uczeń na parterze alarmuje, że potwory zaatakowały szkołę, a nauczyciele są uwięzieni w salach.
 - Żółta strzałka prowadzi do kolejnych sal. Po wejściu nauczyciel prosi o ratunek, a potem zaczyna się walka turowa jak w Undertale: `FIGHT`, `ACT`, `ITEM`, `MERCY`.

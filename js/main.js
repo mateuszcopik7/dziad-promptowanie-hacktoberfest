@@ -110,12 +110,12 @@ function startDialogue(node, color, voice, onDone) {
   unlockPointer();
 }
 
-// Scenka na starcie: Pietrzyk-Piotrowska prowadzi tutorial i rozpoczyna fabule.
+// Scenka na starcie: Pani Pietrzyk-Piotrwska (mentor) prowadzi tutorial i rozpoczyna fabule.
 function startIntro() {
   const k = settings.keys, y = s => `{c:yellow}${s}{/c}`;
   const lines = [
     { text: '* Stój!{p} Zanim wejdziesz dalej — krótki tutorial.', face: 'sad' },
-    '* Jestem ' + y('Pietrzyk-Piotrowska') + '.{p} Przeprowadzę Cię przez podstawy.',
+    '* Jestem ' + y('Pani Pietrzyk-Piotrwska (mentor)') + '.{p} Przeprowadzę Cię przez podstawy.',
     `* Poruszasz się: ${y([k.forward, k.left, k.back, k.right].map(keyLabel).join(' '))}.{p} Rozglądasz się ${y('myszą')} albo ${y(keyLabel(k.turnLeft) + ' ' + keyLabel(k.turnRight))}.`,
     `* ${y('E')} służy do rozmowy i używania obiektów.{p} ${y('F')} włącza latarkę, a ${y('H')} zjada leczącą kanapkę.`,
     `* Pod ${y('M')} masz mapę, a ${y('Esc')} zatrzymuje grę.{p} Żółta strzałka zawsze wskazuje aktualny cel.`,
