@@ -127,6 +127,10 @@ for t in game quests battle dialogue encounter autoplay audio; do node tests/$t.
 python3 -m unittest tests.test_bot
 ```
 
+## Autorzy
+
+Mateusz Copik, Dominik Świątkowski, Maciej Klich, Tomasz Kostka
+
 ## Licencja
 
-MIT
+MIT. Copyright (c) 2026 Mateusz Copik, Dominik Świątkowski, Maciej Klich, Tomasz Kostka.

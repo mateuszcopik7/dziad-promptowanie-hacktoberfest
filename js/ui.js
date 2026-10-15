@@ -39,7 +39,7 @@ const SCREENS = {
     <button data-a="bot">Bot przechodzi grę</button>
     <button data-a="howto">Jak grać</button>
     <button data-a="settings">Ustawienia</button>
-    <p class="foot">Hacktoberfest Hack Day Gliwice 2026</p>`,
+    <p class="foot">Hacktoberfest Hack Day Gliwice 2026<br>© 2026 Mateusz Copik, Dominik Świątkowski, Maciej Klich, Tomasz Kostka</p>`,
 
   howto: () => `
     <h2>Jak grać</h2>
