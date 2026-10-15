@@ -21,7 +21,7 @@ canvas { display: block; width: 100%; height: 100%; image-rendering: pixelated; 
   box-shadow: inset 0 0 0 .25em rgba(74,214,109,.06), 0 0 2em rgba(74,214,109,.22); }
 .panel::after { content: ''; position: absolute; left: 1.7em; right: 1.7em; top: .55em; height: .12em;
   background: linear-gradient(90deg, #4ad66d, #ffe600 55%, transparent); }
-h1 { margin: 0 0 .06em; font-size: 2.7em; line-height: 1; letter-spacing: .09em; color: #71f28c;
+h1 { margin: 0 0 .06em; font-family: 'Poppins', sans-serif; font-weight: 700; font-size: 2.7em; line-height: 1.05; letter-spacing: .04em; color: #71f28c;
   text-shadow: .08em .08em 0 #173f29, 0 0 .55em rgba(74,214,109,.48); }
 h2 { margin: 0 0 .5em; font-size: 1.6em; }
 h3 { margin: .9em 0 .4em; font-size: .95em; color: #aaa; text-transform: uppercase; }
@@ -35,7 +35,8 @@ h3 { margin: .9em 0 .4em; font-size: .95em; color: #aaa; text-transform: upperca
 .stats { line-height: 1.6; color: #ccc; }
 
 button { position: relative; display: block; width: 100%; margin: .52em 0; padding: .72em; font: bold 1em monospace; color: #eee;
-  background: linear-gradient(90deg, #202536, #292c40); border: .1em solid #555a73; cursor: pointer; transition: transform .09s, border-color .09s, background .09s; }
+  background: linear-gradient(90deg, #202536, #292c40); border: .1em solid #555a73; cursor: pointer; transition: transform .09s, border-color .09s, background .09s;
+  clip-path: polygon(0 .55em, .55em 0, calc(100% - .55em) 0, 100% .55em, 100% calc(100% - .55em), calc(100% - .55em) 100%, .55em 100%, 0 calc(100% - .55em)); }
 button::before { content: '›'; position: absolute; left: .65em; color: #4ad66d; }
 button:hover, button:focus-visible { transform: translateX(.18em); background: linear-gradient(90deg, #263b39, #293444); border-color: #71f28c; outline: none; color: #fff; }
 button[data-a="play"] { color: #09110c; background: linear-gradient(90deg, #4ad66d, #91f4a4); border-color: #c8ffd2; text-shadow: none; }
@@ -57,3 +58,13 @@ button[data-a="play"]::before { color: #09110c; }
   h1 { font-size: 2.15em; }
   .feature-grid { gap: .25em; }
 }
+
+/* przelacznik zamiast domyslnego checkboxa (Wycisz dzwiek) */
+input[type="checkbox"] { appearance: none; -webkit-appearance: none; position: relative; width: 3.2em; height: 1.6em; margin: 0; flex: none; cursor: pointer;
+  background: #202536; border: .1em solid #555a73; transition: background .12s, border-color .12s;
+  clip-path: polygon(0 .35em, .35em 0, calc(100% - .35em) 0, 100% .35em, 100% calc(100% - .35em), calc(100% - .35em) 100%, .35em 100%, 0 calc(100% - .35em)); }
+input[type="checkbox"]::after { content: ''; position: absolute; top: .2em; left: .2em; width: 1.05em; height: 1.05em; background: #8a8fa8; transition: left .12s, background .12s; }
+input[type="checkbox"]:checked { background: #2a4a35; border-color: #71f28c; }
+input[type="checkbox"]:checked::after { left: calc(100% - 1.25em); background: #71f28c; }
+input[type="checkbox"]:focus-visible { outline: none; border-color: #ffe600; }
+.feature-grid > * { clip-path: polygon(0 .4em, .4em 0, calc(100% - .4em) 0, 100% .4em, 100% calc(100% - .4em), calc(100% - .4em) 100%, .4em 100%, 0 calc(100% - .4em)); }
