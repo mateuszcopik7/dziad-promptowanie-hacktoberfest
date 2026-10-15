@@ -1,95 +1,121 @@
 # ZSTI ADVENTURE
 
-Gra w stylu Doom (raycaster w czystym HTML/JS, bez buildu i bez zależności), której akcja dzieje się w ZSTI Gliwice. Jeden wielki budynek z czterema piętrami, odtworzony ze zdjęć. Rozmowy z NPC i walki z bossami w salach są w stylu Undertale. Projekt na Hacktoberfest Hack Day Gliwice 2026 (temat: Automation & Emulation).
+**Doom spotyka Undertale w ZSTI Gliwice.** Raycaster 3D w czystym HTML/JS, cztery piętra szkoły odtworzone ze zdjęć, rozmowy i walki turowe w stylu Undertale. Do tego bot, który przechodzi całą grę sam.
 
-## Uruchomienie
+**[Zagraj w przeglądarce](https://mateuszcopik7.github.io/dziad-promptowanie-hacktoberfest/)** · bez instalacji, bez buildu, bez zależności
 
-Gra online (najnowszy build): https://mateuszcopik7.github.io/dziad-promptowanie-hacktoberfest/?v=202610151345
+Hacktoberfest Hack Day Gliwice 2026 · temat **Automation & Emulation**
 
-Lokalnie otwórz `index.html` w przeglądarce albo uruchom serwer:
+![Bot przechodzi grę](docs/demo/bot-speedrun.gif)
 
-```bash
-python3 -m http.server 8000
-```
+*Bot gra sam: rozmowy, questy, schody między piętrami. Nagranie przyspieszone 6x.*
+
+## Co tu jest
+
+| | |
+| --- | --- |
+| **Szkoła w 3D** | Parter i trzy piętra połączone klatkami schodowymi. Plan ze zdjęć ZSTI: dwukolorowe ściany, drzwi z tabliczkami, okna, lastryko, panele LED, ławki, filary. Każde piętro ma swój motyw. |
+| **Klimat** | Krótki zasięg widzenia, mgła, latarka pod `F`, winieta, wstrząsy ekranu, cząsteczki przy trafieniach. |
+| **Rozmowy jak w Undertale** | Tekst pisany literka po literce, głosy postaci, kolory, drżenie, wybory. Portrety pixel-art nauczycieli. |
+| **Walki turowe** | `FIGHT` z paskiem timingu, `ACT` zmienia nastrój bossa, `ITEM` leczy, `MERCY` oszczędza. W turze bossa unikasz pocisków sercem. |
+| **Fabuła** | Szkoła bez prądu, potwory w salach, nauczyciele uwięzieni. Ratujesz ich, pokonujesz Dyrektora Bugów w auli i uciekasz głównym wyjściem. |
+| **Bot** | Przycisk w menu albo bot w Pythonie. Gra sam od startu do końca. |
+
+## Demo
+
+| Start: mentorka uczy sterowania | Eksploracja szkoły |
+| --- | --- |
+| ![Intro](docs/demo/intro.gif) | ![Eksploracja](docs/demo/explore.gif) |
+
+![Menu](docs/demo/menu.png)
 
 ## Przebieg gry
 
-- Katarzyna Pietrzyk-Piotrowska wita gracza w holu i jako mentorka prowadzi pełny tutorial sterowania.
-- Szkoła zaczyna bez prądu. Pierwsza misja prowadzi do interaktywnej skrzynki bezpieczników; latarka pod `F` działa awaryjnie.
-- Po przywróceniu zasilania uczeń na parterze alarmuje, że potwory zaatakowały szkołę, a nauczyciele są uwięzieni w salach.
-- Żółta strzałka prowadzi do kolejnych sal. Po wejściu nauczyciel prosi o ratunek, a potem zaczyna się walka turowa jak w Undertale: `FIGHT`, `ACT`, `ITEM`, `MERCY`.
-- Każde zwycięstwo lub oszczędzenie potwora uwalnia nauczyciela. Po akcji ratunkowej uczeń odblokowuje aulę.
-- W salach występują nauczyciele z dostarczonego zestawu pixel-artów; każda sala ma przypisaną właściwą rolę, nazwisko, sylwetkę i portret dialogowy.
-- Dyrektor Bugów w auli zostawia klucz do głównego wyjścia. Dopiero powrót na parter i opuszczenie szkoły kończy grę.
-- Finał odbywa się w auli przeciwko Dyrektorowi Bugów.
-- Opcjonalny łańcuch poboczny obejmuje korytarzową dezinsekcję z bronią, odzyskanie złotej pieczątki i dostarczenie zakazanego liściku.
-- Ukończenie całego łańcucha odblokowuje Protokół 404, tajną portiernię, ukrytego bossa Archiwistę 404 i złotą legitymację dającą +20 maksymalnego HP.
+1. **Tutorial.** Mentorka Katarzyna Pietrzyk-Piotrowska wita Cię w holu i uczy sterowania w rozmowie.
+2. **Brak prądu.** Szkoła jest ciemna. Znajdź skrzynkę bezpieczników. Latarka działa awaryjnie.
+3. **Alarm.** Uczeń z parteru melduje: potwory zajęły sale, nauczyciele są w środku.
+4. **Ratunek.** Żółta strzałka prowadzi do sal. Wejście w drzwi gasi ekran, nauczyciel prosi o pomoc, zaczyna się walka.
+5. **Finał.** Dyrektor Bugów w auli. Po wygranej zostawia klucz do głównego wyjścia.
+6. **Ucieczka.** Wróć na parter i wyjdź ze szkoły.
+
+**Zadania poboczne:** bugi w korytarzu (broń tylko na czas zadania), złota pieczątka, zakazany liścik. Cały łańcuch odblokowuje **Protokół 404**: tajną portiernię, ukrytego bossa Archiwistę 404 i złotą legitymację (+20 maks. HP).
+
+**Bossowie sal:** Szalona Powtórka, Kserokopiarka Zagłady, Zawieszony Projektor, Kartkówka-Widmo, Nieskończona Pętla, Błąd 404.
 
 ## Sterowanie
 
-| Akcja | Domyślnie |
+| Akcja | Klawisz |
 | --- | --- |
-| Ruch | W / S / A / D |
-| Obrót | mysz albo strzałki |
-| Strzał (gdy masz broń) | mysz albo spacja |
-| Rozmowa | E |
-| Latarka | F |
-| Zjedz kanapkę | H |
-| Pauza | Esc |
-| Minimapa | M |
-| W rozmowie i walce | strzałki, Z / Enter potwierdź, X wstecz |
+| Ruch | `W` `A` `S` `D` |
+| Rozglądanie | mysz albo strzałki |
+| Rozmowa | `E` |
+| Latarka | `F` |
+| Kanapka (leczenie) | `H` |
+| Strzał (gdy masz broń) | LPM albo spacja |
+| Mapa | `M` |
+| Pauza | `Esc` |
+| Rozmowa i walka | strzałki, `Z` / `Enter` potwierdź, `X` wstecz |
 
-Klawisze ruchu, głośność, czułość myszy i FOV zmienisz w menu (Ustawienia). Zapis w `localStorage`.
+Klawisze, czułość myszy, FOV, głośność i pełny ekran zmienisz w **Ustawieniach**.
 
-## Mapa
+## Automation: bot, który gra sam
 
-Plan budynku jest w `mapa/` (PNG, SVG, `mapa.json`, opis i źródła w `mapa/OPIS.md`). `tools/build_world.py` zamienia `mapa/mapa.json` w `js/world-data.js` wczytywany przez grę. Parter to rekonstrukcja założona, piętra 1–3 oparto na zdjęciach.
+**1. W grze.** Menu, przycisk **Bot przechodzi grę**. Logika z `js/autoplay.js` steruje postacią w przeglądarce. `Esc` oddaje Ci sterowanie.
 
-```bash
-python3 tools/build_world.py
-python3 mapa/sprawdz.py
-```
-
-## Struktura
-
-| Plik | Zawartość |
-| --- | --- |
-| `js/game.js` | logika świata: ruch, NPC, strzelanie, wrogowie, drzwi, schody (bez DOM) |
-| `js/world.js`, `js/world-data.js` | świat z mapy: siatki pięter, drzwi, schody |
-| `js/content.js` | NPC, questy, bossowie sal |
-| `js/quests.js` | silnik questów (kill, fetch, talk, nagrody, odblokowania) |
-| `js/dialogue.js` | dialogi w stylu Undertale: pisanie literami, znaczniki, wybory |
-| `js/battle.js` | walka turowa: FIGHT, ACT, ITEM, MERCY, unikanie pocisków |
-| `js/encounter.js` | spotkanie w sali: zaciemnienie, scenka, walka, wynik |
-| `js/scenes.js` | rysowanie dialogów i walki |
-| `js/render.js` | raycaster, sprite'y, latarka, HUD, minimapa |
-| `js/weapon-art.js` | ręce, pistolet i latarka (pixel art) |
-| `js/assets.js`, `js/audio.js`, `js/settings.js`, `js/ui.js`, `js/main.js` | tekstury, dźwięki, ustawienia, menu, pętla gry |
-| `js/autoplay.js` | autogra w przeglądarce (przycisk w menu), logika bota |
-| `bot/bot.py` | bot w Pythonie (Playwright): przechodzi całą grę sam |
-| `tests/` | testy w Node (`*.test.js`) i Pythonie |
-
-## Bot (Automation)
-
-W menu gry jest przycisk **Bot przechodzi grę**: ta sama logika działa wtedy w przeglądarce (`js/autoplay.js`) i gra sama od początku do finału. Esc przejmuje sterowanie. Poniżej bot zewnętrzny w Pythonie (Playwright).
-
-Bot przechodzi całą grę sam, w prawdziwym Chromium przez Playwright. Czyta stan z `window.raid.state()` i `window.raid.world()`, planuje trasę (BFS po siatce piętra, schody między piętrami), obsługuje skrzynkę bezpieczników, dialog alarmowy ucznia i akcję ratowania nauczycieli. W walkach używa ACT do pełnego nastroju, a potem MERCY. Pociski omija planerem, który sprawdza bezpieczne punkty w pudełku na kilkadziesiąt klatek do przodu.
+**2. Z zewnątrz.** `bot/bot.py` uruchamia Chromium przez Playwright i gra jak człowiek: klawisze w dialogach i walkach.
 
 ```bash
 python3 -m venv .venv && .venv/bin/pip install -r bot/requirements.txt && .venv/bin/playwright install chromium
 python3 -m http.server 8765 &
-.venv/bin/python bot/bot.py --url http://localhost:8765/index.html            # z oknem
-.venv/bin/python bot/bot.py --url http://localhost:8765/index.html --headless --speed 3
+.venv/bin/python bot/bot.py --url http://localhost:8765/index.html --speed 3
 ```
+
+Jak działa:
+
+- **Stan gry:** `window.raid.state()` i `window.raid.world()`: pozycja, piętro, questy, NPC, drzwi, schody, walka.
+- **Plan misji:** z listy questów wybiera następny cel: NPC, przedmiot, drzwi sali, wyjście.
+- **Nawigacja:** BFS po siatce piętra, omijanie NPC, wybór piętra w oknie schodów, odblokowanie przy utknięciu.
+- **Strzelanie:** celuje w najbliższego buga w zasięgu wzroku.
+- **Walka:** `ACT` do pełnego nastroju, potem `MERCY`. Kanapka przy niskim HP.
+- **Unik pocisków:** symuluje pociski 50 klatek do przodu i wybiera najbezpieczniejszy punkt.
+- `--speed` przyspiesza grę, unik idzie w normalnym tempie.
+
+## Uruchomienie lokalne
+
+```bash
+git clone https://github.com/mateuszcopik7/dziad-promptowanie-hacktoberfest
+cd dziad-promptowanie-hacktoberfest
+python3 -m http.server 8765
+```
+
+Otwórz http://localhost:8765/index.html. Bez builda, bez npm.
+
+## Technologia
+
+- **Renderer:** raycaster DDA na canvasie, teksturowana podłoga i sufit, mipmapy, mgła, ambient occlusion, sprite'y. HUD skaluje się z oknem i DPI.
+- **Logika bez DOM:** `game.js`, `quests.js`, `dialogue.js`, `battle.js`, `encounter.js` testowane w Node.
+- **Świat z mapy:** `mapa/mapa.json` przez `tools/build_world.py` daje `js/world-data.js`.
+- **Dźwięk:** muzyka i efekty w Web Audio.
+
+| Plik | Zawartość |
+| --- | --- |
+| `js/game.js` | świat, ruch, NPC, strzelanie, drzwi, schody |
+| `js/render.js` | raycaster, sprite'y, latarka, HUD, minimapa |
+| `js/content.js` | NPC, nauczyciele, questy, bossowie |
+| `js/quests.js` | silnik questów |
+| `js/dialogue.js`, `js/scenes.js` | dialogi i rysowanie scen |
+| `js/battle.js`, `js/encounter.js` | walka turowa i spotkanie w sali |
+| `js/autoplay.js` | bot w przeglądarce |
+| `js/main.js` | pętla 60 Hz, sceny, API `window.raid` |
+| `bot/bot.py` | bot w Pythonie (Playwright) |
+| `mapa/`, `tools/` | plan szkoły i generator świata |
 
 ## Testy
 
 ```bash
 for t in game quests battle dialogue encounter autoplay audio; do node tests/$t.test.js; done
-python3 -m unittest tests.test_bot   # logika bota bez przeglądarki
+python3 -m unittest tests.test_bot
 ```
-
-Strony testowe: `battle-test.html`, `dialogue-test.html`, `room-test.html`, `weapon-art-test.html`.
 
 ## Licencja
 
