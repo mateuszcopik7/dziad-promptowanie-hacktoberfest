@@ -93,6 +93,7 @@ const SCENE_SFX = {
   move: () => tone(520, 0.03, 'square', 0, 0.08),
   select: () => tone(780, 0.06, 'square', 0, 0.1),
   hit: () => { noise(0.06, 0.3); tone(220, 0.1, 'sawtooth', -120, 0.2); },
+  crit: () => { noise(0.08, 0.4); tone(440, 0.12, 'square', 0, 0.25); tone(880, 0.16, 'square', -120, 0.3, 0.04); },
   miss: () => tone(120, 0.08, 'square', 0, 0.12),
   hurt: () => tone(90, 0.15, 'sawtooth', -40, 0.25),
   heal: () => tone(660, 0.12, 'square', 0, 0.15),

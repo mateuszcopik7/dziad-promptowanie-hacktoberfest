@@ -60,15 +60,186 @@ function wrapChars(g, chars, maxW) {
   return lines;
 }
 
-function drawPortrait(g, x, y, color, face, portrait) {
+function getPortraitType(name) {
+  if (!name) return 'student_boy';
+  const n = String(name).toLowerCase();
+  if (n.includes('schody') || n.includes('klatka')) return 'stairs';
+  if (n.includes('woźn') || n.includes('heniek') || n.includes('ochroniarz')) return 'janitor';
+  if (n.includes('sekretar')) return 'secretary';
+  if (n.includes('bibliotekar')) return 'librarian';
+  if (n.includes('dyrektor')) return 'director';
+  if (n.includes('pietrzyk') || n.includes('mentor')) return 'mentor';
+  if (n.includes('uczennica')) return 'student_girl';
+  if (n.includes('matematyk') || n.includes('fibich') || n.includes('kręcichwost') || n.includes('pani')) return 'teacher_f';
+  if (n.includes('uczeń') || n.includes('kolega') || n.includes('praktykant')) return 'student_boy';
+  return 'teacher_m';
+}
+
+function drawPixelPortrait(g, ox, oy, type, face, mainColor, tick = 0, scale = 3) {
+  const px = (x, y, w, h, col) => {
+    g.fillStyle = col;
+    g.fillRect(Math.round(ox + x * scale), Math.round(oy + y * scale), Math.round(w * scale), Math.round(h * scale));
+  };
+
+  px(0, 0, 28, 28, '#12141c');
+  g.strokeStyle = mainColor || '#4bb0d1';
+  g.lineWidth = Math.max(1, Math.round(scale * 0.6));
+  g.strokeRect(ox + 1, oy + 1, 28 * scale - 2, 28 * scale - 2);
+
+  if (type === 'stairs') {
+    const steps = [
+      { x: 3, y: 19, w: 22, h: 4, c1: '#4ad66d', c2: '#207038' },
+      { x: 6, y: 15, w: 16, h: 4, c1: '#5ae07d', c2: '#288040' },
+      { x: 9, y: 11, w: 10, h: 4, c1: '#74f095', c2: '#309048' },
+      { x: 12, y: 7, w: 4, h: 4, c1: '#9fffb8', c2: '#38a854' },
+    ];
+    for (const s of steps) {
+      px(s.x, s.y, s.w, 2, s.c1);
+      px(s.x, s.y + 2, s.w, s.h - 2, s.c2);
+    }
+    const blink = Math.floor(tick / 18) % 2 === 0;
+    const arrowCol = blink ? '#ffffff' : '#4ad66d';
+    px(13, 2, 2, 4, arrowCol);
+    px(12, 3, 4, 1, arrowCol);
+    px(11, 4, 6, 1, arrowCol);
+    return;
+  }
+
+  const skin = '#f8cfab', skinSh = '#dea37c';
+  const iris = mainColor || '#3672b8';
+
+  // Szyja i owal twarzy
+  px(11, 22, 6, 4, skinSh);
+  px(7, 7, 14, 15, skin);
+  px(6, 9, 16, 11, skin);
+  px(8, 22, 12, 2, skin);
+  px(9, 23, 10, 1, skinSh);
+
+  // Oczy
+  px(8, 12, 4, 3, '#ffffff');
+  px(16, 12, 4, 3, '#ffffff');
+  px(9, 12, 2, 3, iris);
+  px(17, 12, 2, 3, iris);
+  px(10, 13, 1, 2, '#181822');
+  px(18, 13, 1, 2, '#181822');
+  px(9, 12, 1, 1, '#ffffff');
+  px(17, 12, 1, 1, '#ffffff');
+
+  // Nos
+  px(13, 15, 2, 2, skinSh);
+  px(14, 16, 1, 1, '#c88662');
+
+  // Brwi i usta wg nastroju
+  const brow = '#38281e';
+  if (face === 'sad') {
+    px(8, 10, 2, 1, brow); px(10, 9, 2, 1, brow);
+    px(16, 9, 2, 1, brow); px(18, 10, 2, 1, brow);
+    px(12, 20, 4, 1, '#963444');
+    px(11, 21, 1, 1, '#963444'); px(16, 21, 1, 1, '#963444');
+    px(21, 7, 2, 3, '#60b8ff');
+  } else if (face === 'smile') {
+    px(8, 9, 4, 1, brow); px(16, 9, 4, 1, brow);
+    px(11, 19, 6, 2, '#963444');
+    px(12, 19, 4, 1, '#ffffff');
+    px(10, 18, 1, 1, '#963444'); px(17, 18, 1, 1, '#963444');
+    px(7, 15, 2, 2, 'rgba(235,100,110,0.4)');
+    px(19, 15, 2, 2, 'rgba(235,100,110,0.4)');
+  } else {
+    px(8, 10, 4, 1, brow); px(16, 10, 4, 1, brow);
+    px(12, 19, 4, 1, '#88303e');
+    px(13, 20, 2, 1, skinSh);
+  }
+
+  // Cechy poszczegolnych postaci
+  if (type === 'janitor') {
+    px(5, 1, 18, 5, '#2c385c');
+    px(3, 5, 22, 2, '#1a223a');
+    px(13, 2, 2, 2, '#f0c030');
+    px(4, 7, 3, 4, '#707888');
+    px(21, 7, 3, 4, '#707888');
+    px(8, 17, 12, 3, '#484e5c');
+    px(7, 18, 14, 2, '#5a6272');
+    px(4, 24, 20, 4, '#2c385c');
+    px(10, 24, 8, 4, '#a03830');
+  } else if (type === 'secretary') {
+    const hair = '#422218';
+    px(5, 2, 18, 6, hair);
+    px(3, 7, 4, 11, hair); px(21, 7, 4, 11, hair);
+    px(7, 7, 4, 2, hair); px(17, 7, 4, 2, hair);
+    px(7, 11, 6, 4, '#d02838'); px(15, 11, 6, 4, '#d02838'); px(13, 12, 2, 1, '#d02838');
+    px(8, 12, 4, 2, '#eef8ff'); px(16, 12, 4, 2, '#eef8ff');
+    px(8, 12, 1, 1, '#ffffff'); px(16, 12, 1, 1, '#ffffff');
+    px(5, 24, 18, 4, mainColor || '#d1684b');
+    px(11, 23, 6, 1, '#ffffff');
+  } else if (type === 'librarian') {
+    const hair = '#4c3424';
+    px(10, 0, 8, 4, hair);
+    px(5, 3, 18, 5, hair);
+    px(4, 8, 3, 8, hair); px(21, 8, 3, 8, hair);
+    px(7, 12, 5, 4, '#cca040'); px(16, 12, 5, 4, '#cca040'); px(12, 13, 4, 1, '#cca040');
+    px(8, 13, 3, 2, '#f0faff'); px(17, 13, 3, 2, '#f0faff');
+    px(4, 24, 20, 4, '#38885a');
+    px(12, 24, 4, 4, '#ede4d8');
+  } else if (type === 'director') {
+    const hair = '#282834';
+    px(4, 2, 20, 6, hair);
+    px(3, 7, 4, 11, hair); px(21, 7, 4, 11, hair);
+    px(7, 3, 14, 2, '#9296a8');
+    px(3, 16, 1, 2, '#ffd700'); px(24, 16, 1, 2, '#ffd700');
+    px(4, 24, 20, 4, '#1c2234');
+    px(11, 24, 6, 4, '#ffffff');
+    px(13, 26, 2, 2, '#ffd700');
+  } else if (type === 'mentor') {
+    const hair = '#26262e';
+    px(5, 3, 18, 5, hair);
+    px(4, 7, 3, 9, hair); px(21, 7, 3, 9, hair);
+    px(7, 7, 4, 2, hair); px(17, 7, 4, 2, hair);
+    px(7, 11, 6, 4, '#4ad6c9'); px(15, 11, 6, 4, '#4ad6c9'); px(13, 12, 2, 1, '#4ad6c9');
+    px(8, 12, 4, 2, '#eefeff'); px(16, 12, 4, 2, '#eefeff');
+    px(8, 12, 1, 1, '#ffffff'); px(16, 12, 1, 1, '#ffffff');
+    px(4, 24, 20, 4, '#243448');
+    px(11, 24, 6, 4, '#4ad6c9');
+  } else if (type === 'student_girl') {
+    const hair = '#7a2e22', ribbon = mainColor || '#d64ba0';
+    px(5, 3, 18, 5, hair);
+    px(3, 7, 4, 16, hair); px(21, 7, 4, 16, hair);
+    px(3, 7, 3, 2, ribbon); px(22, 7, 3, 2, ribbon);
+    px(8, 7, 4, 3, hair); px(16, 7, 4, 3, hair);
+    px(5, 24, 18, 4, '#222d42');
+    px(11, 24, 6, 4, '#ffffff');
+    px(12, 25, 4, 3, '#d02840');
+  } else if (type === 'teacher_f') {
+    const hair = '#5a3020';
+    px(4, 3, 20, 6, hair);
+    px(3, 7, 4, 12, hair); px(21, 7, 4, 12, hair);
+    px(7, 11, 5, 4, '#804020'); px(16, 11, 5, 4, '#804020'); px(12, 12, 4, 1, '#804020');
+    px(4, 24, 20, 4, mainColor || '#8b5d45');
+    px(11, 24, 6, 4, '#f0ece4');
+  } else if (type === 'teacher_m') {
+    const hair = '#2e2e38';
+    px(5, 2, 18, 6, hair);
+    px(4, 7, 3, 8, hair); px(21, 7, 3, 8, hair);
+    px(4, 24, 20, 4, mainColor || '#344269');
+    px(11, 24, 6, 4, '#ffffff');
+    px(13, 25, 2, 3, '#c03030');
+  } else {
+    const hair = '#34251c', hairHi = '#563e30';
+    px(5, 3, 18, 5, hair);
+    px(4, 5, 3, 8, hair); px(21, 5, 3, 8, hair);
+    px(8, 7, 3, 3, hair); px(12, 7, 3, 4, hair); px(16, 7, 4, 3, hair);
+    px(7, 3, 12, 1, hairHi); px(10, 2, 6, 1, hairHi);
+    px(4, 24, 20, 4, mainColor || '#3878b8');
+    px(11, 24, 6, 4, '#ffffff');
+    px(13, 24, 2, 4, '#242c38');
+    px(9, 25, 1, 3, '#ffffff'); px(18, 25, 1, 3, '#ffffff');
+  }
+}
+
+function drawPortrait(g, x, y, color, face, portrait, name, tick = 0) {
   const img = sceneImage(portrait);
   if (img) { g.save(); g.beginPath(); g.rect(x, y, 84, 84); g.clip(); drawImageContain(g, img, x, y, 84, 84); g.restore(); return; }
-  g.fillStyle = color; g.fillRect(x, y, 84, 84);
-  g.fillStyle = '#fff'; g.fillRect(x + 16, y + 22, 14, 14); g.fillRect(x + 54, y + 22, 14, 14);
-  g.fillStyle = '#000'; g.fillRect(x + 20, y + 26, 6, 6); g.fillRect(x + 58, y + 26, 6, 6);
-  g.fillRect(x + 22, y + (face === 'sad' ? 62 : 56), 40, 5);
-  if (face === 'smile') { g.fillRect(x + 18, y + 52, 5, 5); g.fillRect(x + 61, y + 52, 5, 5); }
-  if (face === 'sad') { g.fillRect(x + 18, y + 66, 5, 5); g.fillRect(x + 61, y + 66, 5, 5); }
+  const type = getPortraitType(name || portrait);
+  drawPixelPortrait(g, x, y, type, face, color, tick);
 }
 
 // color: kolor portretu NPC
@@ -76,7 +247,7 @@ function drawDialogueBox(g, d, color, tick) {
   const bx = 24, by = 330, bw = 592, bh = 138, face = pageFace(d);
   g.fillStyle = '#000'; g.fillRect(bx, by, bw, bh);
   g.strokeStyle = C_WHITE; g.lineWidth = 6; g.strokeRect(bx, by, bw, bh);
-  drawPortrait(g, bx + 18, by + 22, color, face, d.portrait);
+  drawPortrait(g, bx + 18, by + 22, color, face, d.portrait, d.npc, tick);
   const lines = wrapChars(g, allChars(d), bw - 150), shown = visibleChars(d).length;
   g.font = '22px monospace'; g.textBaseline = 'top';
   let k = 0;
@@ -117,7 +288,11 @@ function drawBossPlaceholder(g, b) {
   if (b.bar.hit > 0 && b.phase === 'text') {
     g.fillStyle = '#333'; g.fillRect(250, 20, 140, 12);
     g.fillStyle = '#2bd62b'; g.fillRect(250, 20, 140 * b.enemyHp / b.def.hp, 12);
-    g.fillStyle = C_RED; g.font = 'bold 22px monospace'; g.fillText('-' + b.bar.hit, 320, 14);
+    const crit = !!b.bar.crit;
+    g.fillStyle = crit ? '#ffd700' : C_RED;
+    g.font = crit ? 'bold 24px monospace' : 'bold 22px monospace';
+    const floatY = 14 - Math.min(8, (b.tick % 30) * 0.3);
+    g.fillText((crit ? '★ KRYTYK! -' : '-') + b.bar.hit, 320, floatY);
   }
   g.textAlign = 'left';
 }
@@ -151,10 +326,18 @@ function drawBattleScene(g, b) {
     drawPlayerShield(g, bx + b.heart.x * S, by + b.heart.y * S, 32, b.invuln > 0 && Math.floor(b.invuln / 4) % 2 === 0);
     g.fillStyle = '#555'; g.fillRect(bx, by + BOX.h * S + 8, BOX.w * S * (1 - b.dodgeTick / (b.def.turnTicks || TURN_TICKS)), 4);
   } else if (b.phase === 'bar') {
-    g.fillStyle = '#222'; g.fillRect(bx + 20, by + 70, BOX.w * S - 40, 100);
-    g.strokeStyle = C_WHITE; g.lineWidth = 2; g.strokeRect(bx + 20, by + 70, BOX.w * S - 40, 100);
-    g.fillStyle = '#2bd62b'; g.fillRect(bx + BOX.w * S / 2 - 6, by + 70, 12, 100);
-    g.fillStyle = C_WHITE; g.fillRect(bx + 20 + (BOX.w * S - 40) * b.bar.pos - 4, by + 62, 8, 116);
+    const barX = bx + 20, barY = by + 70, barW = BOX.w * S - 40, barH = 100;
+    g.fillStyle = '#161824'; g.fillRect(barX, barY, barW, barH);
+    g.strokeStyle = C_WHITE; g.lineWidth = 2; g.strokeRect(barX, barY, barW, barH);
+    // Dobra strefa (zielona) i strefa krytyczna (zlota)
+    const midX = barX + barW / 2;
+    g.fillStyle = 'rgba(74, 214, 109, 0.32)'; g.fillRect(midX - 30, barY, 60, barH);
+    g.fillStyle = '#ffd700'; g.fillRect(midX - 8, barY, 16, barH);
+    g.fillStyle = '#ffffff'; g.fillRect(midX - 2, barY, 4, barH);
+    // Ruchomy suwak
+    const curX = barX + barW * b.bar.pos;
+    g.fillStyle = C_WHITE; g.fillRect(curX - 4, barY - 6, 8, barH + 12);
+    g.strokeStyle = '#ffd700'; g.lineWidth = 2; g.strokeRect(curX - 4, barY - 6, 8, barH + 12);
   } else drawBattleText(g, b);
   // statystyki i przyciski
   g.font = 'bold 16px monospace'; g.fillStyle = C_WHITE; g.fillText('GRACZ  LV ' + b.level, 20, 408); g.fillText('HP', 260, 408);
@@ -185,9 +368,9 @@ function drawEncounter(g, e, tick) {
     const teacherImg = sceneImage(t.sprite || t.portrait);
     if (teacherImg) drawImageContain(g, teacherImg, 220, 38, 200, 270);
     else {
-      g.fillStyle = look.color; g.fillRect(270, 90, 100, 150);
-      g.fillStyle = '#fff'; g.fillRect(292, 120, 14, 14); g.fillRect(334, 120, 14, 14);
-      g.fillStyle = '#000'; g.fillRect(296, 124, 6, 6); g.fillRect(338, 124, 6, 6); g.fillRect(298, 170, 44, 5);
+      g.save();
+      drawPixelPortrait(g, 252, 54, getPortraitType(t.name), 'smile', look.color, tick, 4.8);
+      g.restore();
     }
     drawDialogueBox(g, e.dialogue, look.color, tick);
   }

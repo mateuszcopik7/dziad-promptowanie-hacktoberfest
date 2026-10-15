@@ -56,12 +56,14 @@ function startBar(b) {
 
 function stopBar(b) {
   const quality = clamp01(1 - Math.abs(b.bar.pos - 0.5) * 2);       // 1 na srodku, 0 na brzegu
-  const dmg = Math.round(b.atk * quality * 2);
+  const isCrit = quality >= 0.88;
+  const dmg = Math.round(b.atk * quality * 2 * (isCrit ? 1.5 : 1));
   b.bar.hit = dmg;
+  b.bar.crit = isCrit;
   b.enemyHp = Math.max(0, b.enemyHp - dmg);
-  b.events.push(dmg > 0 ? 'hit' : 'miss');
+  b.events.push(dmg > 0 ? (isCrit ? 'crit' : 'hit') : 'miss');
   if (b.enemyHp <= 0) { b.pending = 'killed'; say(b, b.def.killText, 'end'); }
-  else say(b, dmg > 0 ? `Trafienie! ${dmg} obrażeń.` : 'Pudło.', 'dodge');
+  else say(b, isCrit ? `KRYTYK! ${dmg} obrażeń!` : (dmg > 0 ? `Trafienie! ${dmg} obrażeń.` : 'Pudło.'), 'dodge');
 }
 
 function doAct(b, act) {

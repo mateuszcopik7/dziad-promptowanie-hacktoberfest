@@ -31,7 +31,9 @@ function fitCanvas() {
     document.documentElement.style.setProperty('--u', (r.width / 960) + 'px');
   }
   uiScale = canvas.width / 960;
-  sctx.setTransform(uiScale, 0, 0, uiScale, 0, 0);
+  const sx = (typeof window !== 'undefined' && window.shakeOffset) ? window.shakeOffset.x : 0;
+  const sy = (typeof window !== 'undefined' && window.shakeOffset) ? window.shakeOffset.y : 0;
+  sctx.setTransform(uiScale, 0, 0, uiScale, sx * uiScale, sy * uiScale);
   sctx.imageSmoothingEnabled = false;
 }
 
@@ -445,6 +447,7 @@ function render(g, withHud) {
   collectLabels(g, cam);
   lctx.putImageData(img, 0, 0);
   drawFirstPerson(g);
+  sctx.fillStyle = '#000'; sctx.fillRect(-20, -20, W * SCALE + 40, H * SCALE + 40);
   sctx.drawImage(low, 0, 0, W * SCALE, H * SCALE);
   drawVignette();
   if (withHud) drawHud(g);

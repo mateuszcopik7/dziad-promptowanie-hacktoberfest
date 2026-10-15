@@ -15,6 +15,19 @@ let autoplay = false, apTick = 0;                     // autogra (przycisk w men
 let botSpeed = 1;                                     // mnoznik tempa symulacji (bot przyspiesza gre)
 let botIntent = null;                                 // gdy ustawione, zastepuje klawiature (bot)
 
+let shakeIntensity = 0, shakeFrames = 0;
+let shakeX = 0, shakeY = 0;
+function addScreenShake(intensity, frames) {
+  shakeIntensity = Math.max(shakeIntensity, intensity);
+  shakeFrames = Math.max(shakeFrames, frames);
+}
+
+let hitFlashRgb = '255, 255, 255', hitFlashAlpha = 0;
+function addHitFlash(rgb, alpha) {
+  hitFlashRgb = rgb;
+  hitFlashAlpha = Math.max(hitFlashAlpha, alpha);
+}
+
 // Wszystkie zewnetrzne PNG sa gotowe przed pokazaniem menu. Dzięki temu renderer nigdy
 // nie musi przez kilka klatek podmieniac nauczyciela proceduralnym klockiem zastepczym.
 const worldSpriteAssets = [GUIDE_NPC.def.sprite, ...TEACHERS.map(t => teacherAsset(t.sprite)), ...Object.values(STAIR_ICON_ASSETS)];
@@ -312,7 +325,13 @@ function updatePlay() {
       break;
     }
   }
-  game.events.forEach(playSfx);
+  game.events.forEach(ev => {
+    if (ev === 'hurt') {
+      addScreenShake(7, 10);
+      addHitFlash('255, 30, 30', 0.38);
+    }
+    playSfx(ev);
+  });
   game.events.length = 0;
 }
 
@@ -352,7 +371,19 @@ function updateEncounter() {
   while (acc >= STEP_MS && scene === 'encounter') {
     autoplaySceneInput();
     stepEncounter(enc, sceneHeld, consumeScene());
-    enc.events.forEach(playSceneSfx);
+    enc.events.forEach(ev => {
+      if (ev === 'hurt') {
+        addScreenShake(8, 12);
+        addHitFlash('255, 30, 30', 0.4);
+      } else if (ev === 'crit') {
+        addScreenShake(9, 14);
+        addHitFlash('255, 220, 50', 0.35);
+      } else if (ev === 'hit') {
+        addScreenShake(4, 7);
+        addHitFlash('255, 255, 255', 0.2);
+      }
+      playSceneSfx(ev);
+    });
     acc -= STEP_MS;
     if (encounterDone(enc)) finishEncounter();
   }
@@ -360,23 +391,63 @@ function updateEncounter() {
 
 function drawOverlays() {
   const k = uiScale;
-  sctx.setTransform(k, 0, 0, k, 0, 0);
+  const sx = shakeX, sy = shakeY;
+  sctx.setTransform(k, 0, 0, k, sx * k, sy * k);
   if (scene === 'dialogue') {
-    sctx.fillStyle = 'rgba(0,0,0,.4)'; sctx.fillRect(0, 0, W * SCALE, H * SCALE);
-    sctx.setTransform(k * SCENE_ZOOM, 0, 0, k * SCENE_ZOOM, k * SCENE_OFFSET_X, 0);
+    sctx.fillStyle = 'rgba(0,0,0,.4)'; sctx.fillRect(-20, -20, W * SCALE + 40, H * SCALE + 40);
+    sctx.setTransform(k * SCENE_ZOOM, 0, 0, k * SCENE_ZOOM, (SCENE_OFFSET_X + sx) * k, sy * k);
     drawDialogueBox(sctx, dialogue, dialogueColor, tick);
   } else if (scene === 'encounter') {
-    if (enc.phase === 'fadeOut' || enc.phase === 'fadeIn') { sctx.fillStyle = `rgba(0,0,0,${enc.fade})`; sctx.fillRect(0, 0, W * SCALE, H * SCALE); return; }
-    sctx.fillStyle = '#000'; sctx.fillRect(0, 0, W * SCALE, H * SCALE);
-    sctx.setTransform(k * SCENE_ZOOM, 0, 0, k * SCENE_ZOOM, k * SCENE_OFFSET_X, 0);
+    if (enc.phase === 'fadeOut' || enc.phase === 'fadeIn') {
+      sctx.fillStyle = `rgba(0,0,0,${enc.fade})`;
+      sctx.fillRect(-20, -20, W * SCALE + 40, H * SCALE + 40);
+      return;
+    }
+    sctx.fillStyle = '#000'; sctx.fillRect(-20, -20, W * SCALE + 40, H * SCALE + 40);
+    sctx.setTransform(k * SCENE_ZOOM, 0, 0, k * SCENE_ZOOM, (SCENE_OFFSET_X + sx) * k, sy * k);
     drawEncounter(sctx, enc, tick);
   }
   sctx.setTransform(k, 0, 0, k, 0, 0);
+
+  // Efekt niskiego poziomu zdrowia (pulsująca czerwona winieta ostrzegawcza)
+  const p = scene === 'encounter' && enc && enc.battle ? enc.battle : (game ? game.player : null);
+  if (p && (scene === 'play' || scene === 'encounter')) {
+    const hpRatio = p.hp / p.maxHp;
+    if (hpRatio <= 0.28 && p.hp > 0) {
+      const pulse = Math.sin(tick * 0.12) * 0.5 + 0.5;
+      const alpha = (0.2 + 0.25 * pulse) * (1 - hpRatio / 0.28);
+      const radGrad = sctx.createRadialGradient(
+        W * SCALE / 2, H * SCALE / 2, H * SCALE * 0.28,
+        W * SCALE / 2, H * SCALE / 2, W * SCALE * 0.65
+      );
+      radGrad.addColorStop(0, 'rgba(220, 20, 20, 0)');
+      radGrad.addColorStop(1, `rgba(220, 20, 20, ${alpha.toFixed(3)})`);
+      sctx.fillStyle = radGrad;
+      sctx.fillRect(0, 0, W * SCALE, H * SCALE);
+    }
+  }
+
+  // Rozbłysk uderzenia / trafienia krytycznego
+  if (hitFlashAlpha > 0.01) {
+    sctx.fillStyle = `rgba(${hitFlashRgb}, ${hitFlashAlpha.toFixed(3)})`;
+    sctx.fillRect(-20, -20, W * SCALE + 40, H * SCALE + 40);
+    hitFlashAlpha *= 0.8;
+    if (hitFlashAlpha < 0.01) hitFlashAlpha = 0;
+  }
 }
 
 function frame(now) {
   const dt = Math.min(100, now - last);
   last = now; tick++;
+  if (shakeFrames > 0) {
+    shakeX = (Math.random() - 0.5) * 2 * shakeIntensity;
+    shakeY = (Math.random() - 0.5) * 2 * shakeIntensity;
+    shakeFrames--;
+    if (shakeFrames <= 0) shakeIntensity = 0;
+  } else {
+    shakeX = 0; shakeY = 0;
+  }
+  if (typeof window !== 'undefined') window.shakeOffset = { x: shakeX, y: shakeY };
   if (autoplay && scene === 'dead') ui.onAction('retry');
   if (scene === 'menu') game.player.angle += 0.0015;
   else if (scene === 'play') { acc += dt * botSpeed; updatePlay(); }
