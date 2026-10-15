@@ -1,143 +1,234 @@
-// node tests/game.test.js - testy logiki gry bez przegladarki
+// node tests/game.test.js - testy swiata i logiki gry bez przegladarki
 const fs = require('fs'), path = require('path'), vm = require('vm'), assert = require('assert');
 
 const ctx = vm.createContext({});
-const src = fs.readFileSync(path.join(__dirname, '../js/game.js'), 'utf8');
-vm.runInContext(src + '\nthis.api = { LEVELS, ENEMY_TYPES, createGame, step, castDist, hasLOS, gainXp, xpNeeded, carryOf };', ctx);
+const load = f => fs.readFileSync(path.join(__dirname, '../js', f), 'utf8');
+const src = ['world-data.js', 'world.js', 'content.js', 'quests.js', 'game.js'].map(load).join('\n');
+vm.runInContext(src + `\nthis.api = { WORLD, NPC_DEFS, QUEST_DEFS, FOOD_PLACE, ITEM_PLACE, FINAL_ROOM, createGame, step, setFloor, useStairs, respawn,
+  doorStatus, applyEffects, gainXp, xpNeeded, castDist, hasLOS, roomEncounter, chooseDialog, dialogFor, isUnlocked, questStatus, stairsNear,
+  createQuestState, onQuestKill, wallAt };`, ctx);
 const api = ctx.api;
-const idle = { move: 0, strafe: 0, turn: 0, fire: false };
+const idle = { move: 0, strafe: 0, turn: 0, fire: false, interact: false, flashlight: false, heal: false };
 let passed = 0;
 const test = (name, fn) => { fn(); passed++; console.log('ok  ' + name); };
+const eq = (a, b) => assert.strictEqual(JSON.stringify(a), JSON.stringify(b));
 
-const floorAt = (g, x, y) => g.grid[Math.floor(y)] && g.grid[Math.floor(y)][Math.floor(x)] === 0;
+const W = api.WORLD;
 
-api.LEVELS.forEach((L, i) => {
-  test(`poziom ${i + 1} (${L.name}): ksztalt i obramowanie`, () => {
-    assert(L.map.every(r => r.length === L.map[0].length), 'wiersze roznej dlugosci');
-    assert(L.map.every(r => /^[.1-9]+$/.test(r)), 'zly znak w mapie');
-    assert([...L.map[0], ...L.map[L.map.length - 1]].every(c => c !== '.'), 'dziura w gornej/dolnej scianie');
-    assert(L.map.every(r => r[0] !== '.' && r[r.length - 1] !== '.'), 'dziura w bocznej scianie');
-  });
+test('swiat: 4 pietra 84x56, wejscie na parterze na wolnej komorce', () => {
+  assert.strictEqual(W.floors.length, 4);
+  W.floors.forEach(f => { assert.strictEqual(f.grid.length, 56); assert(f.grid.every(r => r.length === 84)); });
+  const e = W.entrance;
+  assert.strictEqual(e.floor, 0);
+  assert.strictEqual(W.floors[0].grid[e.y][e.x], 0);
+});
 
-  test(`poziom ${i + 1}: start, wrogowie i pickupy na podlodze i osiagalne`, () => {
-    const g = api.createGame(i);
-    const h = g.grid.length, w = g.grid[0].length, seen = new Set();
-    const queue = [[Math.floor(L.start.x), Math.floor(L.start.y)]];
-    assert(floorAt(g, L.start.x, L.start.y), 'start w scianie');
-    while (queue.length) {
-      const [x, y] = queue.pop(), key = x + ',' + y;
-      if (seen.has(key) || x < 0 || y < 0 || x >= w || y >= h || g.grid[y][x] !== 0) continue;
-      seen.add(key);
-      queue.push([x + 1, y], [x - 1, y], [x, y + 1], [x, y - 1]);
+test('drzwi: kazde jest sciana-drzwiami i wskazuje istniejaca sale', () => {
+  W.floors.forEach(f => {
+    for (const [key, d] of Object.entries(f.doors)) {
+      const [x, y] = key.split(',').map(Number);
+      assert.strictEqual(f.grid[y][x], 4, 'komorka drzwi ' + key);
+      assert(f.rooms[d.zone], 'brak sali ' + d.zone);
     }
-    for (const e of g.enemies) {
-      assert(api.ENEMY_TYPES[e.type], 'nieznany typ ' + e.type);
-      assert(seen.has(Math.floor(e.x) + ',' + Math.floor(e.y)), `wrog ${e.type} ${e.x},${e.y} nieosiagalny`);
-    }
-    for (const k of g.pickups) assert(seen.has(Math.floor(k.x) + ',' + Math.floor(k.y)), `pickup ${k.kind} ${k.x},${k.y} nieosiagalny`);
   });
 });
 
-test('boss wystepuje tylko na ostatnim poziomie', () => {
-  const last = api.LEVELS.length - 1;
-  api.LEVELS.forEach((L, i) => {
-    const bosses = L.enemies.filter(([type]) => type === 'boss');
-    assert.strictEqual(bosses.length, i === last ? 1 : 0);
-  });
+test('schody: kazde ma pare na drugim pietrze, ladowanie na przechodniej komorce', () => {
+  for (const s of W.stairs) {
+    const [tf, tx, ty] = s.to;
+    assert.strictEqual(W.floors[tf].grid[ty][tx], 0, 'ladowanie ' + s.id);
+    assert(W.floors[tf].stairCells[ty][tx], 'ladowanie poza klatka ' + s.id);
+    assert(W.stairs.some(r => r.floor === tf && r.to[0] === s.floor && r.x === tx && r.y === ty), 'brak pary dla ' + s.id);
+  }
 });
 
-test('strzal zabija buga po 3 trafieniach i daje XP', () => {
-  const g = api.createGame(0);
-  Object.assign(g.player, { x: 2.5, y: 6.5, angle: 0 });
-  g.enemies = [{ type: 'bug', x: 5.5, y: 6.5, hp: 3, alive: true, awake: false, hit: 0, atk: 0 }];
-  g.total = 1;
-  for (let i = 0; i < 60; i++) api.step(g, { ...idle, fire: true });
-  assert.strictEqual(g.kills, 1);
-  assert.strictEqual(g.state, 'win');
-  assert.strictEqual(g.player.xp, 10);
+// przejscie po wszystkich pietrach z wejscia (schody lacza ta sama komorke miedzy pietrami)
+function reachable() {
+  const seen = W.floors.map(f => f.grid.map(r => r.map(() => false)));
+  const queue = [[W.entrance.floor, W.entrance.x, W.entrance.y]];
+  while (queue.length) {
+    const [fl, x, y] = queue.pop(), f = W.floors[fl];
+    if (y < 0 || x < 0 || y >= f.grid.length || x >= f.grid[0].length || f.grid[y][x] !== 0 || seen[fl][y][x]) continue;
+    seen[fl][y][x] = true;
+    queue.push([fl, x + 1, y], [fl, x - 1, y], [fl, x, y + 1], [fl, x, y - 1]);
+    for (const s of W.stairs) if (s.floor === fl && s.x === x && s.y === y) queue.push([s.to[0], s.to[1], s.to[2]]);
+  }
+  return seen;
+}
+
+test('osiagalnosc: wszystkie drzwi, NPC, jedzenie i przedmioty da sie dotknac z wejscia', () => {
+  const seen = reachable(), g = api.createGame();
+  const near = (fl, x, y) => [[0, 0], [1, 0], [-1, 0], [0, 1], [0, -1]].some(([dx, dy]) => seen[fl][Math.floor(y) + dy] && seen[fl][Math.floor(y) + dy][Math.floor(x) + dx]);
+  W.floors.forEach((f, fl) => Object.keys(f.doors).forEach(k => { const [x, y] = k.split(',').map(Number); assert(near(fl, x, y), `drzwi ${k} na pietrze ${fl}`); }));
+  g.npcs.forEach(n => assert(seen[n.floor][Math.floor(n.y)][Math.floor(n.x)], 'NPC ' + n.id));
+  api.FOOD_PLACE.forEach(([fl, x, y]) => assert(seen[fl][Math.floor(y)][Math.floor(x)], `jedzenie ${fl} ${x},${y}`));
+  api.ITEM_PLACE.forEach(i => assert(seen[i.floor][Math.floor(i.y)][Math.floor(i.x)], 'przedmiot ' + i.item));
 });
 
-test('sciana blokuje strzal', () => {
-  const g = api.createGame(0);
-  Object.assign(g.player, { x: 1.5, y: 4.5, angle: Math.PI / 2 });
-  g.enemies = [{ type: 'bug', x: 1.5, y: 6.5, hp: 3, alive: true, awake: false, hit: 0, atk: 0 }];
-  g.total = 2;
-  for (let i = 0; i < 30; i++) api.step(g, { ...idle, fire: true });
-  assert.strictEqual(g.enemies[0].hp, 3);
+test('NPC z questami stoja na swoich slotach, nikt nie dzieli komorki', () => {
+  const g = api.createGame(), cells = new Set();
+  for (const [id, d] of Object.entries(api.NPC_DEFS)) {
+    const n = g.npcs.find(x => x.id === id), slot = W.floors[n.floor].npcSlots.find(s => s.id === d.slot);
+    assert(slot, 'slot ' + d.slot);
+    assert(Math.floor(n.x) === slot.x && Math.floor(n.y) === slot.y);
+  }
+  g.npcs.forEach(n => { const k = n.floor + ',' + Math.floor(n.x) + ',' + Math.floor(n.y); assert(!cells.has(k)); cells.add(k); });
 });
 
-test('brak amunicji: strzal nie zabiera ani nie trafia', () => {
-  const g = api.createGame(0);
-  Object.assign(g.player, { x: 2.5, y: 6.5, angle: 0, ammo: 0 });
-  g.enemies = [{ type: 'bug', x: 5.5, y: 6.5, hp: 3, alive: true, awake: false, hit: 0, atk: 0 }];
-  g.total = 2;
+test('sale z bossami maja kompletna definicje spotkania', () => {
+  let rooms = 0;
+  W.floors.forEach((f, fl) => Object.values(f.rooms).filter(z => z.boss_ready).forEach(z => {
+    const r = api.roomEncounter(z, fl);
+    assert(r.boss.hp > 0 && r.boss.acts.some(a => a.mercy > 0) && r.boss.patterns.length, z.id);
+    assert(r.teacher.intro.length && r.teacher.outro.killed && r.teacher.outro.spared);
+    rooms++;
+  }));
+  assert(rooms >= 20);
+  assert(W.floors[1].rooms[api.FINAL_ROOM] && W.floors[1].rooms[api.FINAL_ROOM].boss_ready);
+});
+
+test('start: bez broni, strzal nic nie robi, latarka pod F', () => {
+  const g = api.createGame();
+  assert.strictEqual(g.player.weapon, false);
   api.step(g, { ...idle, fire: true });
-  assert.strictEqual(g.enemies[0].hp, 3);
-  assert(g.events.includes('empty'));
+  assert.strictEqual(g.player.ammo, 0);
+  assert(!g.events.includes('shoot'));
+  assert.strictEqual(g.player.flashlight, false);
+  api.step(g, { ...idle, flashlight: true });
+  assert.strictEqual(g.player.flashlight, true);
 });
 
-test('zabity bug zwraca amunicje', () => {
-  const g = api.createGame(0);
-  Object.assign(g.player, { x: 2.5, y: 6.5, angle: 0, ammo: 3 });
-  g.enemies = [{ type: 'glitch', x: 5.5, y: 6.5, hp: 1, alive: true, awake: false, hit: 0, atk: 0 }];
-  g.total = 2;
-  api.step(g, { ...idle, fire: true });
-  assert.strictEqual(g.kills, 1);
-  assert.strictEqual(g.player.ammo, 2 + 3);
+test('gracz nie wchodzi w sciane ani w NPC', () => {
+  const g = api.createGame();
+  Object.assign(g.player, { x: 41.5, y: 54.5, angle: Math.PI / 2 });          // w dol, w sciane budynku
+  for (let i = 0; i < 120; i++) api.step(g, { ...idle, move: 1 });
+  assert(g.player.y < 56 && g.grid[Math.floor(g.player.y)][Math.floor(g.player.x)] === 0);
+  const npc = g.npcs.find(n => n.floor === 0);
+  Object.assign(g.player, { x: npc.x - 2, y: npc.y, angle: 0 });
+  for (let i = 0; i < 120; i++) api.step(g, { ...idle, move: 1 });
+  assert(Math.hypot(npc.x - g.player.x, npc.y - g.player.y) >= 0.5);
 });
 
-test('zero amunicji i brak pendrive: awaryjny zapas, zadnego zakleszczenia', () => {
-  const g = api.createGame(0);
-  g.pickups = g.pickups.filter(k => k.kind !== 'usb');
-  g.player.ammo = 0;
+test('NPC w zasiegu: podpowiedz i prosba o rozmowe po E', () => {
+  const g = api.createGame(), n = g.npcs.find(x => x.id === 'woznik');
+  Object.assign(g.player, { x: n.x - 1.5, y: n.y, angle: 0 });
   api.step(g, idle);
-  assert.strictEqual(g.player.ammo, 5);
+  assert(g.prompt.includes('Heniek'));
+  api.step(g, { ...idle, interact: true });
+  assert.strictEqual(g.request.type, 'npc');
+  assert.strictEqual(g.request.id, 'woznik');
 });
 
-test('awans: XP daje poziom, wiecej HP i leczenie', () => {
-  const g = api.createGame(0);
-  g.player.hp = 50;
+test('uderzenie w drzwi zglasza spotkanie, w drzwi zamkniete - komunikat', () => {
+  const g = api.createGame();
+  api.setFloor(g, 1);
+  const door = Object.values(W.floors[1].doors).find(d => d.zone === 'f1-library');
+  const [cx, cy] = door.cells[0];
+  Object.assign(g.player, { x: cx + 0.5, y: cy + 1.6, angle: -Math.PI / 2 });    // przed drzwiami od strony korytarza
+  let req = null;
+  for (let i = 0; i < 60 && !req; i++) { api.step(g, { ...idle, move: 1 }); req = g.request; }
+  assert(req && req.type === 'door' && req.door.zone === 'f1-library');
+  assert.strictEqual(api.doorStatus(g, req.door).kind, 'encounter');
+  const toilets = Object.values(W.floors[1].doors).find(d => d.zone === 'f1-wc');
+  assert.strictEqual(api.doorStatus(g, toilets).kind, 'msg');
+  const aula = Object.values(W.floors[1].doors).find(d => d.zone === api.FINAL_ROOM);
+  assert.strictEqual(api.doorStatus(g, aula).kind, 'msg');
+  g.qs.unlocked.push('drzwi-auli');
+  assert.strictEqual(api.doorStatus(g, aula).kind, 'encounter');
+  g.cleared.push('f1-library');
+  assert.strictEqual(api.doorStatus(g, req.door).kind, 'msg');
+});
+
+test('klatka schodowa: wejscie zglasza opcje pieter, useStairs zmienia pietro i blokuje ponowny wyzwalacz', () => {
+  const g = api.createGame();
+  Object.assign(g.player, { x: 4.5, y: 27.5, angle: 0 });
+  api.step(g, idle);
+  assert.strictEqual(g.request.type, 'stairs');
+  assert(g.request.options.length >= 1 && g.request.options.every(s => s.floor === 0));
+  api.useStairs(g, g.request.options[0]);
+  assert.strictEqual(g.floor, 1);
+  api.step(g, idle);
+  assert.strictEqual(g.request, null);
+  Object.assign(g.player, { x: 20.5, y: 27.5 });
+  api.step(g, idle);
+  Object.assign(g.player, { x: 77.5, y: 27.5 });
+  api.step(g, idle);
+  assert.strictEqual(g.request.type, 'stairs');
+  assert(g.request.options.length === 2, 'na srodkowym pietrze sa schody w gore i w dol');
+});
+
+// pomocnicze: przyjmij quest u NPC
+const talk = (g, npc, option) => api.applyEffects(g, api.chooseDialog(g.qs, api.QUEST_DEFS, g.npcDefs, npc, option));
+
+test('quest ze strzelaniem: bron dopiero po przyjeciu, mobki pojawiaja sie w korytarzu, bron znika po oddaniu', () => {
+  const g = api.createGame();
+  assert.strictEqual(g.floors[0].enemies.length, 0);
+  talk(g, 'woznik', 'accept');
+  assert.strictEqual(g.player.weapon, true);
+  assert.strictEqual(g.player.ammo, 40);
+  assert.strictEqual(g.floors[0].enemies.length, 5);
+  assert(g.floors[0].enemies.every(e => e.zone === 'f0-corridor' && api.wallAt(g.grid, Math.floor(e.x), Math.floor(e.y)) === 0));
+  // zabij wszystkich: ustaw przed kazdym w linii strzalu
+  for (const e of g.floors[0].enemies) {
+    Object.assign(g.player, { x: e.x - 3, y: e.y, angle: 0, hp: 60 });
+    if (api.wallAt(g.grid, Math.floor(g.player.x), Math.floor(g.player.y))) Object.assign(g.player, { x: e.x + 3, angle: Math.PI });
+    for (let i = 0; i < 120 && e.alive; i++) api.step(g, { ...idle, fire: true });
+    assert(!e.alive);
+  }
+  assert.strictEqual(api.questStatus(g.qs, api.QUEST_DEFS, 'bugi'), 'ready');
+  const xpBefore = g.player.xp + g.player.level * 1000;
+  talk(g, 'woznik', 'turnin');
+  assert.strictEqual(g.player.weapon, false);
+  assert(g.player.xp + g.player.level * 1000 > xpBefore);
+  assert.strictEqual(api.questStatus(g.qs, api.QUEST_DEFS, 'bugi'), 'done');
+});
+
+test('lancuch: pieczatka, liscik i klucz odblokowuja aule', () => {
+  const g = api.createGame();
+  g.qs.quests.bugi = { status: 'done', progress: 5 };
+  talk(g, 'sekretarka', 'accept');
+  api.setFloor(g, 2);
+  const it = api.ITEM_PLACE[0];
+  Object.assign(g.player, { x: it.x, y: it.y });
+  api.step(g, idle);
+  assert.strictEqual(api.questStatus(g.qs, api.QUEST_DEFS, 'pieczatka'), 'ready');
+  talk(g, 'sekretarka', 'turnin');
+  talk(g, 'uczen', 'accept');
+  talk(g, 'bibliotekarka', 'deliver');
+  talk(g, 'uczen', 'turnin');
+  assert.strictEqual(api.questStatus(g.qs, api.QUEST_DEFS, 'klucz'), 'available');
+  talk(g, 'dyrektor', 'accept');
+  talk(g, 'woznik', 'deliver');
+  assert(!api.isUnlocked(g.qs, 'drzwi-auli'));
+  talk(g, 'dyrektor', 'turnin');
+  assert(api.isUnlocked(g.qs, 'drzwi-auli'));
+});
+
+test('zdrowie: kanapka leczy po H, respawn wraca do ostatnich schodow z polowa HP', () => {
+  const g = api.createGame();
+  g.player.hp = 20;
+  api.step(g, { ...idle, heal: true });
+  assert.strictEqual(g.player.hp, 45);
+  assert.strictEqual(g.food, 1);
+  Object.assign(g.player, { x: 4.5, y: 27.5 });
+  api.step(g, idle);
+  api.useStairs(g, g.request.options[0]);
+  Object.assign(g.player, { x: 40.5, y: 27.5, hp: 0 });
+  api.step(g, idle);
+  assert.strictEqual(g.state, 'dead');
+  api.respawn(g);
+  assert.strictEqual(g.state, 'play');
+  assert.strictEqual(g.floor, 1);
+  assert.strictEqual(g.player.hp, 30);
+});
+
+test('XP daje poziomy, wiecej HP i leczenie', () => {
+  const g = api.createGame();
+  g.player.hp = 10;
   api.gainXp(g, api.xpNeeded(1));
   assert.strictEqual(g.player.level, 2);
-  assert.strictEqual(g.player.maxHp, 110);
-  assert.strictEqual(g.player.hp, 80);
-});
-
-test('wrog budzi sie w zasiegu wzroku i gryzie', () => {
-  const g = api.createGame(0);
-  Object.assign(g.player, { x: 2.5, y: 6.5, angle: 0 });
-  g.enemies = [{ type: 'bug', x: 3.3, y: 6.5, hp: 3, alive: true, awake: false, hit: 0, atk: 0 }];
-  g.total = 2;
-  api.step(g, idle);
-  assert.strictEqual(g.player.hp, 92);
-});
-
-test('wrog za sciana spi', () => {
-  const g = api.createGame(0);
-  Object.assign(g.player, { x: 1.5, y: 4.5 });
-  g.enemies = [{ type: 'bug', x: 1.5, y: 6.5, hp: 3, alive: true, awake: false, hit: 0, atk: 0 }];
-  g.total = 2;
-  for (let i = 0; i < 10; i++) api.step(g, idle);
-  assert.strictEqual(g.enemies[0].awake, false);
-});
-
-test('gracz nie wchodzi w sciane', () => {
-  const g = api.createGame(0);
-  Object.assign(g.player, { x: 1.5, y: 4.5, angle: -Math.PI / 2 });
-  for (let i = 0; i < 120; i++) api.step(g, { ...idle, move: 1 });
-  assert(g.player.y > 1);
-  assert(floorAt(g, g.player.x, g.player.y));
-});
-
-test('pickup: jedzenie leczy do maxHp, pendrive daje amunicje', () => {
-  const g = api.createGame(0);
-  g.player.hp = 60;
-  g.pickups = [{ kind: 'food', x: g.player.x, y: g.player.y }, { kind: 'usb', x: g.player.x, y: g.player.y }];
-  const ammo = g.player.ammo;
-  api.step(g, idle);
-  assert.strictEqual(g.player.hp, 85);
-  assert.strictEqual(g.player.ammo, ammo + 10);
-  assert.strictEqual(g.pickups.length, 0);
+  assert.strictEqual(g.player.maxHp, 70);
+  assert.strictEqual(g.player.hp, 40);
 });
 
 console.log(`\n${passed} testow przeszlo`);
