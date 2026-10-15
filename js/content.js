@@ -15,10 +15,10 @@ const NPC_DEFS = {
     idle: ['* Słucham?'], idleRepeat: [['* Jeśli to nie pilne,{p} wróć później.']] },
 };
 
-// Pani Pietrzyk-Piotrwska (mentor) prowadzi tutorial i daje pierwsza misje fabularna.
+// Katarzyna Pietrzyk-Piotrowska prowadzi tutorial i daje pierwsza misje fabularna.
 const GUIDE_NPC = {
   id: 'pietrzyk', floor: 0, x: 41.5, y: 50.5,
-  def: { name: 'Pani Pietrzyk-Piotrwska (mentor)', color: '#4ad6c9', voice: { pitch: 250 }, quests: ['zasilanie'],
+  def: { name: 'Katarzyna Pietrzyk-Piotrowska', color: '#4ad6c9', voice: { pitch: 250 }, quests: ['zasilanie'],
     sprite: 'assets/teachers/calypietrzyk.png', portrait: 'assets/teachers/pietrzyk1.png',
     idle: ['* Najpierw uruchom {c:yellow}główne bezpieczniki{/c}.{p} Skrzynka jest po lewej stronie holu.'], idleRepeat: [['* Żółta strzałka prowadzi do skrzynki.{p} Podejdź i naciśnij {c:yellow}E{/c}.']],
     look: { head: 'short', body: 'coat', hair: '#2a2a30', skin: '#e8c0a0', bottom: '#2c3a4a', acc: '#4ad6c9', glasses: true, scale: 0.9 } },

@@ -1,4 +1,4 @@
-# Gliwice Raid
+# ZSTI ADVENTURE
 
 Gra w stylu Doom (raycaster w czystym HTML/JS, bez buildu i bez zależności), której akcja dzieje się w ZSTI Gliwice. Jeden wielki budynek z czterema piętrami, odtworzony ze zdjęć. Rozmowy z NPC i walki z bossami w salach są w stylu Undertale. Projekt na Hacktoberfest Hack Day Gliwice 2026 (temat: Automation & Emulation).
 
@@ -14,7 +14,7 @@ python3 -m http.server 8000
 
 ## Przebieg gry
 
-- Pani Pietrzyk-Piotrwska (mentor) wita gracza w holu i prowadzi pełny tutorial sterowania.
+- Katarzyna Pietrzyk-Piotrowska wita gracza w holu i jako mentorka prowadzi pełny tutorial sterowania.
 - Szkoła zaczyna bez prądu. Pierwsza misja prowadzi do interaktywnej skrzynki bezpieczników; latarka pod `F` działa awaryjnie.
 - Po przywróceniu zasilania uczeń na parterze alarmuje, że potwory zaatakowały szkołę, a nauczyciele są uwięzieni w salach.
 - Żółta strzałka prowadzi do kolejnych sal. Po wejściu nauczyciel prosi o ratunek, a potem zaczyna się walka turowa jak w Undertale: `FIGHT`, `ACT`, `ITEM`, `MERCY`.

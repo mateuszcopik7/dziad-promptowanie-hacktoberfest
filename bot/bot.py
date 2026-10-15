@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-"""Bot grajacy w Gliwice Raid od startu do finalu.
+"""Bot grajacy w ZSTI ADVENTURE od startu do finalu.
 
 Steruje gra w przegladarce przez Playwright. Czyta stan z window.raid.state() i window.raid.world(),
 planuje trase (BFS po siatce pietra, schody miedzy pietrami), strzela przez window.raid.setIntent(),
@@ -497,7 +497,7 @@ def play(page, timeout, speed=GAME_SPEED):
 
 
 def main():
-    ap = argparse.ArgumentParser(description="Bot grajacy w Gliwice Raid: 4 questy i walka z finalowym bossem")
+    ap = argparse.ArgumentParser(description="Bot grajacy w ZSTI ADVENTURE: 4 questy i walka z finalowym bossem")
     ap.add_argument("--url", default=DEFAULT_URL, help="adres gry (domyslnie lokalny index.html)")
     ap.add_argument("--headless", action="store_true", help="bez okna przegladarki")
     ap.add_argument("--speed", type=float, default=GAME_SPEED, help="mnoznik tempa gry (1 = normalne)")

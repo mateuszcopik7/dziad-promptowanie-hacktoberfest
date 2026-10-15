@@ -275,7 +275,7 @@ function useInteractable(g, id) {
   if (!o) return;
   if (id === 'glowne-bezpieczniki' && !o.used) {
     const fx = onQuestSwitch(g.qs, QUEST_DEFS, id);
-    if (!fx.length) return notify(g, 'Skrzynka nie reaguje. Najpierw porozmawiaj z: Pani Pietrzyk-Piotrwska (mentor).');
+    if (!fx.length) return notify(g, 'Skrzynka nie reaguje. Najpierw porozmawiaj z mentorką: Katarzyna Pietrzyk-Piotrowska.');
     o.used = true; g.power = true;
     applyEffects(g, fx);
     notify(g, 'ZASILANIE PRZYWRÓCONE — znajdź ucznia na parterze', 260);
