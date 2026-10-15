@@ -10,6 +10,8 @@ const fmtTime = ticks => {
 
 const FORMAT = {
   volume: v => Math.round(v * 100) + '%',
+  musicVolume: v => Math.round(v * 100) + '%',
+  sfxVolume: v => Math.round(v * 100) + '%',
   sensitivity: v => v.toFixed(1) + 'x',
   fov: v => v + '°',
 };
@@ -37,7 +39,7 @@ const SCREENS = {
     <p class="text">Pani Pietrzyk-Piotrwska (mentor) przeprowadzi Cię przez tutorial. Potem przywróć zasilanie w szkole i porozmawiaj z uczniem na parterze.</p>
     <p class="text">Potwory uwięziły nauczycieli w salach. Żółta strzałka i mapa prowadzą do aktualnego celu; obiekty i rozmowy obsługujesz klawiszem E.</p>
     <p class="text">Wejdź w drzwi wskazanej sali: nauczyciel prosi o ratunek, a potem zaczyna się walka turowa: FIGHT, ACT, ITEM, MERCY. Potwora można pokonać albo oszczędzić.</p>
-    <p class="text">Cel: uwolnij nauczycieli, odblokuj aulę i zatrzymaj źródło ataku.</p>
+    <p class="text">Cel: uwolnij nauczycieli, zatrzymaj źródło ataku w auli, zdobądź klucz i opuść szkołę głównym wyjściem.</p>
     <p class="text keys">${ACTIONS.map(([id, label]) => `${label}: <b>${keyLabel(settings.keys[id])}</b>`).join(' · ')}<br>
       E: rozmowa · F: latarka · H: kanapka · Esc: pauza · M: minimapa<br>
       W rozmowie i walce: strzałki, Z / Enter: potwierdź, X: wstecz</p>
@@ -45,7 +47,9 @@ const SCREENS = {
 
   settings: () => `
     <h2>Ustawienia</h2>
-    ${slider('Głośność', 'volume', 0, 1, 0.05)}
+    ${slider('Głośność ogólna', 'volume', 0, 1, 0.05)}
+    ${slider('Głośność muzyki', 'musicVolume', 0, 1, 0.05)}
+    ${slider('Głośność efektów', 'sfxVolume', 0, 1, 0.05)}
     <label class="row"><span>Wycisz dźwięk</span><input type="checkbox" data-s="muted" ${settings.muted ? 'checked' : ''}></label>
     ${slider('Czułość myszy', 'sensitivity', 0.3, 2.5, 0.1)}
     ${slider('Pole widzenia (FOV)', 'fov', 50, 100, 1)}
@@ -72,7 +76,7 @@ const SCREENS = {
     <button data-a="menu">Menu</button>`,
 
   victory: d => `
-    <h2 class="good">Szkoła uratowana</h2>${stats(d)}
+    <h2 class="good">Szkoła uratowana — udało Ci się wyjść!</h2>${stats(d)}
     <button data-a="play">Zagraj od nowa</button>
     <button data-a="menu">Menu</button>`,
 };
@@ -129,5 +133,6 @@ uiEl.addEventListener('input', e => {
 });
 
 uiEl.addEventListener('change', e => {
-  if (e.target.dataset.s === 'volume') { audioInit(); playSfx('pickup'); }
+  if (e.target.dataset.s === 'volume' || e.target.dataset.s === 'sfxVolume') { audioInit(); playSfx('pickup'); }
+  else if (e.target.dataset.s === 'musicVolume') { audioInit(); }
 });

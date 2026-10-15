@@ -18,7 +18,9 @@ python3 -m http.server 8000
 - Szkoła zaczyna bez prądu. Pierwsza misja prowadzi do interaktywnej skrzynki bezpieczników; latarka pod `F` działa awaryjnie.
 - Po przywróceniu zasilania uczeń na parterze alarmuje, że potwory zaatakowały szkołę, a nauczyciele są uwięzieni w salach.
 - Żółta strzałka prowadzi do kolejnych sal. Po wejściu nauczyciel prosi o ratunek, a potem zaczyna się walka turowa jak w Undertale: `FIGHT`, `ACT`, `ITEM`, `MERCY`.
-- Każde zwycięstwo lub oszczędzenie potwora uwalnia nauczyciela. Po akcji ratunkowej uczeń przekazuje klucz do auli.
+- Każde zwycięstwo lub oszczędzenie potwora uwalnia nauczyciela. Po akcji ratunkowej uczeń odblokowuje aulę.
+- W salach występują nauczyciele z dostarczonego zestawu pixel-artów; każda sala ma przypisaną właściwą rolę, nazwisko, sylwetkę i portret dialogowy.
+- Dyrektor Bugów w auli zostawia klucz do głównego wyjścia. Dopiero powrót na parter i opuszczenie szkoły kończy grę.
 - Finał odbywa się w auli przeciwko Dyrektorowi Bugów.
 
 ## Sterowanie
@@ -81,7 +83,7 @@ python3 -m http.server 8765 &
 ## Testy
 
 ```bash
-for t in game quests battle dialogue encounter autoplay; do node tests/$t.test.js; done
+for t in game quests battle dialogue encounter autoplay audio; do node tests/$t.test.js; done
 python3 -m unittest tests.test_bot   # logika bota bez przeglądarki
 ```
 

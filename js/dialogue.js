@@ -32,7 +32,7 @@ function parseMarkup(text) {
 function createDialogue(node) {
   const lines = node.lines && node.lines.length ? node.lines : ['...'];
   const d = {
-    npc: node.npc, voice: node.voice || { pitch: 300 }, options: node.options || [],
+    npc: node.npc, voice: node.voice || { pitch: 300 }, portrait: node.portrait || null, options: node.options || [],
     pages: lines.map(l => (typeof l === 'string' ? { text: l } : l)),
     page: 0, tokens: [], idx: 0, acc: 0, wait: 0, blip: 0, cursor: 0,
     phase: 'type', result: null, events: [],

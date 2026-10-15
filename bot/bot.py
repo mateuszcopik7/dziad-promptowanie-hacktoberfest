@@ -245,7 +245,7 @@ def quest_status(state, quest):
 
 
 def current_goal(state, world):
-    """Fabula: bezpieczniki, alarm ucznia, ratowanie sal, na koncu aula."""
+    """Fabula: bezpieczniki, alarm, ratowanie sal, aula, klucz i wyjscie."""
     npcs = {n["id"]: n for n in world["npcs"]}
 
     def s(q):
@@ -266,8 +266,11 @@ def current_goal(state, world):
             room = (here or rooms)[0]
             return {"kind": "door", "zone": room["id"], "floor": room["floor"]}
         return npc("uczen")
-    if FINAL_ZONE in state["cleared"]:
+    if state.get("state") == "escaped":
         return {"kind": "done", "floor": state["floor"]}
+    if FINAL_ZONE in state["cleared"]:
+        obj = next(i for i in world["interactables"] if i["id"] == "wyjscie-szkoly")
+        return {"kind": "interact", **obj}
     return {"kind": "door", "zone": FINAL_ZONE, "floor": 1}
 
 

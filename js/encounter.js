@@ -12,7 +12,7 @@ function createEncounter(room, player, items, seed = 1) {
 }
 
 function teacherDialogue(room, lines) {
-  return createDialogue({ npc: room.teacher.name, lines, options: [{ id: 'ok', label: 'Dalej' }], voice: room.teacher.voice });
+  return createDialogue({ npc: room.teacher.name, lines, options: [{ id: 'ok', label: 'Dalej' }], voice: room.teacher.voice, portrait: room.teacher.portrait });
 }
 
 function startOutro(e) {

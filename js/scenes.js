@@ -4,11 +4,32 @@
 const SCENE_W = 640, SCENE_H = 480;
 const BATTLE_S = 2, BATTLE_BX = 80, BATTLE_BY = 150;           // skala i pozycja pudelka walki
 const C_WHITE = '#fff', C_ORANGE = '#ff9a1f', C_YELLOW = '#ffe600', C_RED = '#ff2a2a';
+const sceneImageCache = {};
+
+function sceneImage(path) {
+  if (!path || typeof Image === 'undefined') return null;
+  if (!sceneImageCache[path]) { const img = new Image(); img.src = path; sceneImageCache[path] = img; }
+  return sceneImageCache[path].complete && sceneImageCache[path].naturalWidth ? sceneImageCache[path] : null;
+}
+
+function drawImageContain(g, img, x, y, w, h) {
+  const scale = Math.min(w / img.width, h / img.height), dw = img.width * scale, dh = img.height * scale;
+  g.drawImage(img, x + (w - dw) / 2, y + (h - dh) / 2, dw, dh);
+}
 
 function drawHeart(g, x, y, color) {
   g.fillStyle = color;
   g.fillRect(x - 6, y - 6, 5, 5); g.fillRect(x + 1, y - 6, 5, 5);
   g.fillRect(x - 7, y - 3, 14, 5); g.fillRect(x - 5, y + 2, 10, 3); g.fillRect(x - 2, y + 5, 4, 3);
+}
+
+function drawPlayerShield(g, x, y, size = 30, blink = false) {
+  const img = sceneImage('assets/zlota-tarcza.png');
+  if (!img) return drawHeart(g, x, y, blink ? '#f5df9a' : '#d4af37');
+  g.save();
+  if (blink) g.globalAlpha = 0.35;
+  drawImageContain(g, img, x - size / 2, y - size / 2, size, size);
+  g.restore();
 }
 
 // zawijanie na pelnym tekscie strony, zeby slowa nie przeskakiwaly podczas pisania
@@ -25,7 +46,9 @@ function wrapChars(g, chars, maxW) {
   return lines;
 }
 
-function drawPortrait(g, x, y, color, face) {
+function drawPortrait(g, x, y, color, face, portrait) {
+  const img = sceneImage(portrait);
+  if (img) { g.save(); g.beginPath(); g.rect(x, y, 84, 84); g.clip(); drawImageContain(g, img, x, y, 84, 84); g.restore(); return; }
   g.fillStyle = color; g.fillRect(x, y, 84, 84);
   g.fillStyle = '#fff'; g.fillRect(x + 16, y + 22, 14, 14); g.fillRect(x + 54, y + 22, 14, 14);
   g.fillStyle = '#000'; g.fillRect(x + 20, y + 26, 6, 6); g.fillRect(x + 58, y + 26, 6, 6);
@@ -39,7 +62,7 @@ function drawDialogueBox(g, d, color, tick) {
   const bx = 24, by = 330, bw = 592, bh = 138, face = pageFace(d);
   g.fillStyle = '#000'; g.fillRect(bx, by, bw, bh);
   g.strokeStyle = C_WHITE; g.lineWidth = 6; g.strokeRect(bx, by, bw, bh);
-  drawPortrait(g, bx + 18, by + 22, color, face);
+  drawPortrait(g, bx + 18, by + 22, color, face, d.portrait);
   const lines = wrapChars(g, allChars(d), bw - 150), shown = visibleChars(d).length;
   g.font = '22px monospace'; g.textBaseline = 'top';
   let k = 0;
@@ -111,7 +134,7 @@ function drawBattleScene(g, b) {
   if (b.phase === 'dodge') {
     g.fillStyle = C_WHITE;
     for (const k of b.bullets) { g.beginPath(); g.arc(bx + k.x * S, by + k.y * S, k.r * S, 0, 7); g.fill(); }
-    drawHeart(g, bx + b.heart.x * S, by + b.heart.y * S, b.invuln > 0 && Math.floor(b.invuln / 4) % 2 === 0 ? '#ffb3b3' : C_RED);
+    drawPlayerShield(g, bx + b.heart.x * S, by + b.heart.y * S, 32, b.invuln > 0 && Math.floor(b.invuln / 4) % 2 === 0);
     g.fillStyle = '#555'; g.fillRect(bx, by + BOX.h * S + 8, BOX.w * S * (1 - b.dodgeTick / (b.def.turnTicks || TURN_TICKS)), 4);
   } else if (b.phase === 'bar') {
     g.fillStyle = '#222'; g.fillRect(bx + 20, by + 70, BOX.w * S - 40, 100);
@@ -129,7 +152,7 @@ function drawBattleScene(g, b) {
     const x = 20 + i * 150, sel = b.phase === 'menu' && b.menu === 'main' && b.cursor === i;
     g.strokeStyle = sel ? C_YELLOW : C_ORANGE; g.lineWidth = 3; g.strokeRect(x, 420, 130, 40);
     g.fillStyle = sel ? C_YELLOW : C_ORANGE; g.font = 'bold 20px monospace'; g.textAlign = 'center'; g.fillText(l, x + 65, 447); g.textAlign = 'left';
-    if (sel) drawHeart(g, x + 16, 440, C_RED);
+    if (sel) drawPlayerShield(g, x + 16, 440, 22);
   });
 }
 
@@ -145,9 +168,13 @@ function drawEncounter(g, e, tick) {
   if (e.phase === 'battle') drawBattleScene(g, e.battle);
   else {
     const t = e.room.teacher, look = t.look || { color: '#4bb0d1' };
-    g.fillStyle = look.color; g.fillRect(270, 90, 100, 150);                       // placeholder nauczyciela
-    g.fillStyle = '#fff'; g.fillRect(292, 120, 14, 14); g.fillRect(334, 120, 14, 14);
-    g.fillStyle = '#000'; g.fillRect(296, 124, 6, 6); g.fillRect(338, 124, 6, 6); g.fillRect(298, 170, 44, 5);
+    const teacherImg = sceneImage(t.sprite || t.portrait);
+    if (teacherImg) drawImageContain(g, teacherImg, 220, 38, 200, 270);
+    else {
+      g.fillStyle = look.color; g.fillRect(270, 90, 100, 150);
+      g.fillStyle = '#fff'; g.fillRect(292, 120, 14, 14); g.fillRect(334, 120, 14, 14);
+      g.fillStyle = '#000'; g.fillRect(296, 124, 6, 6); g.fillRect(338, 124, 6, 6); g.fillRect(298, 170, 44, 5);
+    }
     drawDialogueBox(g, e.dialogue, look.color, tick);
   }
 }

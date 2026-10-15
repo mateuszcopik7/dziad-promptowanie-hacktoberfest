@@ -19,6 +19,7 @@ const NPC_DEFS = {
 const GUIDE_NPC = {
   id: 'pietrzyk', floor: 0, x: 41.5, y: 50.5,
   def: { name: 'Pani Pietrzyk-Piotrwska (mentor)', color: '#4ad6c9', voice: { pitch: 250 }, quests: ['zasilanie'],
+    sprite: 'assets/teachers/calypietrzyk.png', portrait: 'assets/teachers/pietrzyk1.png',
     idle: ['* Najpierw uruchom {c:yellow}główne bezpieczniki{/c}.{p} Skrzynka jest po lewej stronie holu.'], idleRepeat: [['* Żółta strzałka prowadzi do skrzynki.{p} Podejdź i naciśnij {c:yellow}E{/c}.']],
     look: { head: 'short', body: 'coat', hair: '#2a2a30', skin: '#e8c0a0', bottom: '#2c3a4a', acc: '#4ad6c9', glasses: true, scale: 0.9 } },
 };
@@ -47,7 +48,7 @@ const QUEST_DEFS = {
       '* Wejdź do sal i pokonaj potwory.{p} Musimy ich uwolnić!'],
     activeLines: ['* Nauczyciele nadal są uwięzieni.{p} Żółta strzałka pokaże najbliższą salę.'],
     doneLines: [{ text: '* Udało się!{p} Nauczyciele są bezpieczni.', face: 'smile' },
-      '* Atak idzie z {c:red}auli{/c}.{p} Weź ten klucz i zakończ to.'],
+      '* Atak idzie z {c:red}auli{/c}.{p} Odblokowaliśmy drzwi — zakończ to.'],
     reward: { xp: 120, unlock: ['drzwi-auli'] } },
   /* Starsze poboczne zadania zostają w danych jako materiał do dalszej rozbudowy,
      ale nie są już przypięte do NPC i nie blokują głównej fabuły. */
@@ -71,7 +72,11 @@ const QUEST_DEFS = {
 // Obiekty fabularne stojace w swiecie i obslugiwane klawiszem E.
 const STORY_INTERACTABLES = [
   { id: 'glowne-bezpieczniki', name: 'Skrzynka bezpieczników', floor: 0, x: 33.5, y: 50.5, sprite: 'breaker' },
+  { id: 'wyjscie-szkoly', name: 'Wyjście ze szkoły', floor: 0, x: 41.5, y: 54.8, sprite: 'exit' },
 ];
+
+// Trzy obowiazkowe sale glownej akcji ratunkowej, dobrane do rzeczywistych rol nauczycieli.
+const STORY_RESCUE_ROOMS = ['f1-library', 'f2-214', 'f3-305'];
 
 // przedmioty do znalezienia w swiecie
 const ITEM_PLACE = [{ item: 'pieczatka', name: 'Pieczątka', floor: 2, x: 44.5, y: 27.5 }];
@@ -136,26 +141,43 @@ const BOSS_TEMPLATES = [
     patterns: [{ type: 'side', rate: 18, speed: 2, dmg: 6 }, { type: 'wall', rate: 62, speed: 1.4, dmg: 8 }] },
 ];
 
+// Prawdziwi nauczyciele i dostarczone przez organizatora grafiki. Kazda sala ma stale przypisanie.
 const TEACHERS = [
-  { name: 'Pan Kowalski', color: '#4bb0d1', pitch: 160 }, { name: 'Pani Nowak', color: '#d1684b', pitch: 340 }, { name: 'Pan Wiśniewski', color: '#7a9a4b', pitch: 140 },
-  { name: 'Pani Zielińska', color: '#c25a9c', pitch: 320 }, { name: 'Pan Lewandowski', color: '#5a7cc2', pitch: 170 }, { name: 'Pani Kamińska', color: '#d1b04b', pitch: 300 },
+  { id: 'lorys', name: 'Pan Loryś', role: 'nauczyciel systemów operacyjnych', color: '#7c8aa0', pitch: 160, sprite: 'calylorys.png', portrait: 'lorys1.png' },
+  { id: 'szoltysek', name: 'Pan Szołtysek', role: 'nauczyciel informatyki', color: '#7794b8', pitch: 190, sprite: 'calyszoltysek.png', portrait: 'szoltysek1.png' },
+  { id: 'fibich', name: 'Pani Fibich', role: 'nauczycielka języka angielskiego', color: '#8b5d45', pitch: 330, sprite: 'calafibich.png', portrait: 'fibich1.png' },
+  { id: 'wilczek', name: 'Pan Wilczek', role: 'bibliotekarz', color: '#344269', pitch: 150, sprite: 'calywilczek.png', portrait: 'wilczek1.png' },
+  { id: 'gadaj', name: 'Pan Gadaj', role: 'nauczyciel sieci i baz danych', color: '#7b7f88', pitch: 170, sprite: 'calygadaj.png', portrait: 'gadaj1.png' },
+  { id: 'czarnecki', name: 'Pan Czarnecki', role: 'nauczyciel elektryk', color: '#19191d', pitch: 180, sprite: 'calyczarnecki.png', portrait: 'czarnecki1.png' },
+  { id: 'debski', name: 'Pan Dębski', role: 'nauczyciel geografii', color: '#ece4ce', pitch: 210, sprite: 'calydebski.png', portrait: 'debski1.png' },
+  { id: 'krecichwost', name: 'Pani Kręcichwost', role: 'nauczycielka języka polskiego', color: '#ede6d7', pitch: 310, sprite: 'calykrecichwost.png', portrait: 'krecichwost1.png' },
 ];
+
+const TEACHER_ROOMS = {
+  'f0-gym': 'debski',
+  'f1-library': 'wilczek', 'f1-lab113': 'lorys', 'f1-canteen': 'debski', 'f1-recreation': 'szoltysek', 'f1-room111': 'krecichwost',
+  'f2-211': 'czarnecki', 'f2-212': 'czarnecki', 'f2-214': 'fibich', 'f2-215': 'debski', 'f2-216': 'gadaj', 'f2-217': 'czarnecki', 'f2-218': 'krecichwost',
+  'f3-301': 'debski', 'f3-303': 'czarnecki', 'f3-305': 'gadaj', 'f3-313': 'szoltysek', 'f3-314': 'lorys',
+  'f3-302': 'szoltysek', 'f3-304': 'szoltysek', 'f3-306': 'gadaj', 'f3-315': 'lorys',
+};
+
+const teacherAsset = file => 'assets/teachers/' + file;
 
 const hashStr = s => [...s].reduce((a, c) => (a * 31 + c.charCodeAt(0)) >>> 0, 7);
 
 // spotkanie w sali: zalezy od strefy (sali) i pietra, deterministycznie
 function roomEncounter(zone, floorIdx) {
   if (zone.id === FINAL_ROOM) {
-    return { id: zone.id, name: zone.name, final: true, teacher: { name: 'Pani Dyrektor', voice: { pitch: 200 }, look: { color: '#d1b04b' },
+    return { id: zone.id, name: zone.name, final: true, teacher: { name: 'Pani Dyrektor', voice: { pitch: 200 }, look: { color: '#d1b04b' }, portrait: teacherAsset('dyrektor1.png'),
       intro: [{ text: '* Dotarłeś.{p} Dobrze.', face: 'smile' }, '* To {c:red}on{/c} jest źródłem wszystkich bugów w szkole.', '* Pokonaj go.{p} Albo przekonaj.{p} Wybór należy do Ciebie.'],
-      outro: { killed: ['* Koniec bugów.{p} Szkoła jest uratowana.'], spared: ['* Przekonałeś go.{p} Nie spodziewałam się.{p} Szkoła jest uratowana.'], lost: ['* Odpocznij.'] } },
+      outro: { killed: ['* Koniec bugów.{p} Wypadł z niego {c:yellow}klucz do wyjścia{/c}!'], spared: ['* Przekonałeś go.{p} Oddaje Ci {c:yellow}klucz do wyjścia{/c}.'], lost: ['* Odpocznij.'] } },
       boss: FINAL_BOSS, reward: { xp: 0, unlock: [] } };
   }
-  const h = hashStr(zone.id), t = TEACHERS[h % TEACHERS.length], tpl = BOSS_TEMPLATES[(h >>> 3) % BOSS_TEMPLATES.length], scale = 1 + 0.3 * floorIdx;
+  const h = hashStr(zone.id), t = TEACHERS.find(x => x.id === TEACHER_ROOMS[zone.id]) || TEACHERS[h % TEACHERS.length], tpl = BOSS_TEMPLATES[(h >>> 3) % BOSS_TEMPLATES.length], scale = 1 + 0.3 * floorIdx;
   return {
     id: zone.id, name: zone.name,
-    teacher: { name: t.name, voice: { pitch: t.pitch }, look: { color: t.color },
-      intro: [{ text: '* Dobrze, że jesteś!{p} Potwór zamknął mnie w tej sali.', face: 'sad' },
+    teacher: { name: t.name, voice: { pitch: t.pitch }, look: { color: t.color }, sprite: teacherAsset(t.sprite), portrait: teacherAsset(t.portrait),
+      intro: [{ text: `* Dobrze, że jesteś!{p} Jestem ${t.name}, ${t.role}.{p} Potwór zamknął mnie w tej sali.`, face: 'sad' },
         `* W sali ${zone.number || ''} ${zone.name} czai się {shake}coś dziwnego{/shake}.`,
         { text: '* Pokonaj je albo uspokój.{p} Byleśmy mogli stąd wyjść.', face: 'smile' }],
       outro: { killed: ['* Jestem wolny.{p} Dziękuję za ratunek!'], spared: [{ text: '* Uspokoiłeś je.{p} Jesteśmy bezpieczni.', face: 'smile' }, '* Dziękuję za ratunek!'], lost: ['* Nic Ci nie jest?'] } },

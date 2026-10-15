@@ -51,6 +51,12 @@ function clearInput() {
   mouseDown = false; mouseDX = 0;
 }
 
+function updateGameMusic(g) {
+  if (scene === 'play' || scene === 'dialogue') {
+    playMusic(g && g.power ? 'explore' : 'dark');
+  }
+}
+
 function startGame() {
   autoplay = false; botSpeed = 1;
   game = createGame();
@@ -59,6 +65,8 @@ function startGame() {
   clearInput();
   hideScreen();
   audioInit();
+  setMusicMuffled(false);
+  updateGameMusic(game);
   lockPointer();
   startIntro();
 }
@@ -76,6 +84,7 @@ function backToPlay() {
   scene = 'play';
   acc = 0;
   clearInput();
+  setMusicMuffled(false);
   if (!autoplay) lockPointer();
 }
 
@@ -84,11 +93,13 @@ function pause() {
   scene = 'paused';
   clearInput();
   unlockPointer();
+  setMusicMuffled(true);
   showScreen('pause');
 }
 
 function resume() {
   hideScreen();
+  setMusicMuffled(false);
   backToPlay();
 }
 
@@ -97,6 +108,8 @@ function toMenu() {
   enc = null; dialogue = null;
   game = createGame();
   unlockPointer();
+  setMusicMuffled(false);
+  playMusic('menu');
   showScreen('main');
 }
 
@@ -124,7 +137,7 @@ function startIntro() {
     '* Bez paniki.{p} Latarka działa awaryjnie.{p} Ruszaj za żółtą strzałką!',
   ];
   const def = game.npcDefs[GUIDE_NPC.id];
-  startDialogue({ npc: def.name, lines, options: [{ id: 'ok', label: 'Włączam prąd' }] }, def.color, def.voice, () => {
+  startDialogue({ npc: def.name, lines, portrait: def.portrait, options: [{ id: 'ok', label: 'Włączam prąd' }] }, def.color, def.voice, () => {
     notify(game, 'NOWA MISJA: uruchom główne bezpieczniki', 220);
   });
 }
@@ -133,7 +146,7 @@ function talkToNpc(id) {
   const def = game.npcDefs[id];
   const node = dialogFor(game.qs, QUEST_DEFS, game.npcDefs, id);
   noteTalk(game.qs, id);
-  startDialogue(node, def.color, def.voice, result => applyEffects(game, chooseDialog(game.qs, QUEST_DEFS, game.npcDefs, id, result)));
+  startDialogue({ ...node, portrait: def.portrait }, def.color, def.voice, result => applyEffects(game, chooseDialog(game.qs, QUEST_DEFS, game.npcDefs, id, result)));
 }
 
 function useStairsDialogue(options) {
@@ -153,6 +166,7 @@ function startEncounter(zone) {
   acc = 0;
   clearInput();
   unlockPointer();
+  playMusic(room.final ? 'boss' : 'battle');
 }
 
 function finishEncounter() {
@@ -162,6 +176,7 @@ function finishEncounter() {
   if (r.outcome === 'lost') {
     respawn(game);
     notify(game, 'Budzisz się przy schodach');
+    updateGameMusic(game);
     return backToPlay();
   }
   p.hp = Math.max(1, r.hp);
@@ -169,7 +184,11 @@ function finishEncounter() {
   if (!room.final) applyEffects(game, onQuestRoom(game.qs, QUEST_DEFS));
   gainXp(game, r.xp);
   notify(game, `${room.name}: ${r.outcome === 'spared' ? 'oszczędzony' : 'pokonany'}, +${r.xp} XP`, 200);
-  if (room.final) return showEnd('victory');
+  if (room.final) {
+    if (!game.qs.items.includes('klucz-wyjscie')) game.qs.items.push('klucz-wyjscie');
+    notify(game, 'ZDOBYTO KLUCZ DO WYJŚCIA — wróć na parter', 300);
+  }
+  updateGameMusic(game);
   backToPlay();
 }
 
@@ -178,12 +197,14 @@ function showEnd(which) {
   scene = which;
   clearInput();
   unlockPointer();
+  if (which === 'victory') playMusic('victory');
+  else if (which === 'dead') stopMusic();
   showScreen(which, { time: fmtTime(game.ticks), level: game.player.level, rooms: game.cleared.length });
 }
 
 function handleRequest(req) {
   if (req.type === 'npc') talkToNpc(req.id);
-  else if (req.type === 'interact') useInteractable(game, req.id);
+  else if (req.type === 'interact' && useInteractable(game, req.id) === 'escaped') showEnd('victory');
   else if (req.type === 'stairs') useStairsDialogue(req.options);
   else if (req.type === 'door') {
     const st = doorStatus(game, req.door);
@@ -199,7 +220,7 @@ ui.onAction = action => {
     case 'settings': ui.from = scene === 'paused' ? 'pause' : 'main'; showScreen('settings'); break;
     case 'back': showScreen(ui.from); break;
     case 'resume': resume(); break;
-    case 'retry': respawn(game); hideScreen(); backToPlay(); break;
+    case 'retry': respawn(game); hideScreen(); backToPlay(); updateGameMusic(game); break;
     case 'menu': toMenu(); break;
     case 'fullscreen': document.fullscreenElement ? document.exitFullscreen() : document.documentElement.requestFullscreen().catch(() => {}); break;
   }
@@ -260,10 +281,20 @@ function updatePlay() {
   while (acc >= STEP_MS && scene === 'play') {
     const ap = autoplay ? apIntent(game) : null;
     if (autoplay && !ap) stopAutoplay();
+    const prevPower = game.power;
     step(game, ap || readIntent());
+    if (game.power !== prevPower) updateGameMusic(game);
     acc -= STEP_MS;
     if (game.request) { handleRequest(game.request); break; }
-    if (game.state === 'dead') { playSfx('lose'); scene = 'dead'; clearInput(); unlockPointer(); showScreen('dead', { time: fmtTime(game.ticks), level: game.player.level, rooms: game.cleared.length }); break; }
+    if (game.state === 'dead') {
+      playSfx('lose');
+      stopMusic();
+      scene = 'dead';
+      clearInput();
+      unlockPointer();
+      showScreen('dead', { time: fmtTime(game.ticks), level: game.player.level, rooms: game.cleared.length });
+      break;
+    }
   }
   game.events.forEach(playSfx);
   game.events.length = 0;
@@ -364,7 +395,7 @@ window.raid = {
   world: () => ({
     stairs: WORLD.stairs, npcs: game.npcs.map(n => ({ id: n.id, floor: n.floor, x: n.x, y: n.y })), items: ITEM_PLACE,
     interactables: STORY_INTERACTABLES,
-    rescueRooms: WORLD.floors.flatMap((f, floor) => Object.values(f.rooms).filter(r => r.boss_ready && r.id !== FINAL_ROOM).map(r => ({ id: r.id, floor }))),
+    rescueRooms: STORY_RESCUE_ROOMS.map(id => ({ id, floor: WORLD.floors.findIndex(f => f.rooms[id]) })),
     doors: WORLD.floors.map(f => [...new Set(Object.values(f.doors))].map(d => ({ zone: d.zone, cells: d.cells }))),
   }),
   setSpeed: n => { botSpeed = n; },
@@ -373,4 +404,13 @@ window.raid = {
 };
 
 showScreen('main');
+playMusic('menu');
+const onFirstAudioInteraction = () => {
+  audioInit();
+  if (scene === 'menu') playMusic('menu');
+  removeEventListener('pointerdown', onFirstAudioInteraction);
+  removeEventListener('keydown', onFirstAudioInteraction);
+};
+addEventListener('pointerdown', onFirstAudioInteraction);
+addEventListener('keydown', onFirstAudioInteraction);
 requestAnimationFrame(frame);

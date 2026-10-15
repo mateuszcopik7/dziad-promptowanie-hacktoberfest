@@ -130,7 +130,8 @@ function spriteList(g) {
   }));
   g.npcs.filter(n => n.floor === g.floor).forEach(n => {
     const def = g.npcDefs[n.id];
-    list.push({ x: n.x, y: n.y, spr: npcSprite(def.look, def.color), scale: (def.look && def.look.scale) || 0.85, name: def.name, shadow: true, marker: npcMarker(g.qs, QUEST_DEFS, g.npcDefs, n.id) });
+    const custom = externalSprite(def.sprite);
+    list.push({ x: n.x, y: n.y, spr: custom || npcSprite(def.look, def.color), scale: custom ? 1.15 : (def.look && def.look.scale) || 0.85, name: def.name, shadow: true, marker: npcMarker(g.qs, QUEST_DEFS, g.npcDefs, n.id) });
   });
   g.world.floors[g.floor].decor.forEach(d => {
     if (d.kind === 'bench') list.push({ x: d.x, y: d.y, spr: SPRITES.bench, scale: 0.34 });

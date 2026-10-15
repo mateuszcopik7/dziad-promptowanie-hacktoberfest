@@ -5,7 +5,7 @@ const ACTIONS = [
 ];
 
 const DEFAULT_SETTINGS = {
-  volume: 0.6, muted: false, sensitivity: 1, fov: 66,
+  volume: 0.6, musicVolume: 0.6, sfxVolume: 0.8, muted: false, sensitivity: 1, fov: 66,
   keys: {
     forward: 'KeyW', back: 'KeyS', left: 'KeyA', right: 'KeyD',
     turnLeft: 'ArrowLeft', turnRight: 'ArrowRight', fire: 'Space',

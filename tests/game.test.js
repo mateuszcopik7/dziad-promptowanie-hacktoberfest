@@ -77,14 +77,21 @@ test('NPC z questami stoja na swoich slotach, nikt nie dzieli komorki', () => {
 });
 
 test('sale z bossami maja kompletna definicje spotkania', () => {
-  let rooms = 0;
+  let rooms = 0; const teachers = new Set();
   W.floors.forEach((f, fl) => Object.values(f.rooms).filter(z => z.boss_ready).forEach(z => {
     const r = api.roomEncounter(z, fl);
     assert(r.boss.hp > 0 && r.boss.acts.some(a => a.mercy > 0) && r.boss.patterns.length, z.id);
     assert(r.teacher.intro.length && r.teacher.outro.killed && r.teacher.outro.spared);
+    if (!r.final) { teachers.add(r.teacher.name); assert(r.teacher.sprite && r.teacher.portrait); }
     rooms++;
   }));
   assert(rooms >= 20);
+  assert(teachers.size >= 8, 'sale powinny miec roznych prawdziwych nauczycieli');
+  ['Pan Loryś', 'Pan Szołtysek', 'Pani Fibich', 'Pan Wilczek', 'Pan Gadaj', 'Pan Czarnecki', 'Pan Dębski', 'Pani Kręcichwost']
+    .forEach(name => assert(teachers.has(name), name));
+  assert.strictEqual(api.roomEncounter(W.floors[1].rooms['f1-library'], 1).teacher.name, 'Pan Wilczek');
+  assert.strictEqual(api.roomEncounter(W.floors[2].rooms['f2-214'], 2).teacher.name, 'Pani Fibich');
+  assert.strictEqual(api.roomEncounter(W.floors[3].rooms['f3-305'], 3).teacher.name, 'Pan Gadaj');
   assert(W.floors[1].rooms[api.FINAL_ROOM] && W.floors[1].rooms[api.FINAL_ROOM].boss_ready);
 });
 
@@ -186,6 +193,16 @@ test('fabula: uczen zleca ratunek, trzy sale odblokowuja aule', () => {
   assert(!api.isUnlocked(g.qs, 'drzwi-auli'));
   talk(g, 'uczen', 'turnin');
   assert(api.isUnlocked(g.qs, 'drzwi-auli'));
+});
+
+test('final: bez klucza wyjscie jest zamkniete, klucz pozwala opuscic szkole', () => {
+  const g = api.createGame();
+  assert.strictEqual(api.useInteractable(g, 'wyjscie-szkoly'), 'locked');
+  assert.strictEqual(g.state, 'play');
+  g.cleared.push(api.FINAL_ROOM);
+  g.qs.items.push('klucz-wyjscie');
+  assert.strictEqual(api.useInteractable(g, 'wyjscie-szkoly'), 'escaped');
+  assert.strictEqual(g.state, 'escaped');
 });
 
 test('zdrowie: kanapka leczy po H, respawn wraca do ostatnich schodow z polowa HP', () => {

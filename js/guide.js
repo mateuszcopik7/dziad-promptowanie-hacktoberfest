@@ -23,6 +23,11 @@ function doorTarget(g, zoneId, text) {
 
 // najblizsza nieukonczona sala z bossem: na biezacym pietrze, a jak nie ma, na najnizszym pietrze z taka sala
 function nextBossRoom(g) {
+  for (const zoneId of STORY_RESCUE_ROOMS) {
+    if (g.cleared.includes(zoneId)) continue;
+    const target = doorTarget(g, zoneId, 'Uwolnij nauczyciela');
+    if (target) return { ...target, zone: zoneId, text: 'Wejdź do sali ' + target.label + ' i uwolnij nauczyciela' };
+  }
   const open = (f, fl) => Object.values(f.rooms).filter(z => z.boss_ready && !g.cleared.includes(z.id)
     && !(z.id === FINAL_ROOM && !isUnlocked(g.qs, 'drzwi-auli')) && (fl !== undefined)).map(z => ({ z, fl }));
   const here = open(g.world.floors[g.floor], g.floor);
@@ -66,6 +71,10 @@ function rawObjective(g) {
     if (st(id) === 'available') return npcTarget(g, QUEST_DEFS[id].giver, 'Nowy quest: porozmawiaj z ' + g.npcDefs[QUEST_DEFS[id].giver].name);
   }
   if (isUnlocked(g.qs, 'drzwi-auli') && !g.cleared.includes(FINAL_ROOM)) return doorTarget(g, FINAL_ROOM, 'Źródło ataku jest w auli — pokonaj Dyrektora Bugów');
+  if (g.cleared.includes(FINAL_ROOM) && g.qs.items.includes('klucz-wyjscie')) {
+    const o = g.interactables.find(x => x.id === 'wyjscie-szkoly');
+    return { floor: o.floor, x: o.x, y: o.y, label: o.name, text: 'Masz klucz — wróć do głównego wyjścia i opuść szkołę' };
+  }
   return null;
 }
 

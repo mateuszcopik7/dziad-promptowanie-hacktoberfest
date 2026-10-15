@@ -122,6 +122,29 @@ function makeSprite(rows, pal) {
   return { w, h, data };
 }
 
+// Zewnetrzne grafiki nauczycieli sa ladowane raz i zamieniane na format raycastera.
+// Czarne tlo dostarczonych PNG traktujemy jak przezroczystosc, bez modyfikowania plikow zrodlowych.
+const externalSpriteCache = {};
+function externalSprite(path) {
+  if (!path || typeof Image === 'undefined') return null;
+  if (!externalSpriteCache[path]) {
+    const entry = externalSpriteCache[path] = { sprite: null }, img = new Image();
+    img.onload = () => {
+      const maxH = 256, scale = Math.min(1, maxH / img.height), w = Math.max(1, Math.round(img.width * scale)), h = Math.max(1, Math.round(img.height * scale));
+      const c = document.createElement('canvas'); c.width = w; c.height = h;
+      const x = c.getContext('2d'); x.imageSmoothingEnabled = false; x.drawImage(img, 0, 0, w, h);
+      const rgba = x.getImageData(0, 0, w, h).data, data = new Uint32Array(w * h);
+      for (let i = 0; i < data.length; i++) {
+        const r = rgba[i * 4], g = rgba[i * 4 + 1], b = rgba[i * 4 + 2], a = rgba[i * 4 + 3];
+        if (a > 24 && r + g + b > 24) data[i] = rgb(r, g, b);
+      }
+      entry.sprite = { w, h, data };
+    };
+    img.src = path;
+  }
+  return externalSpriteCache[path].sprite;
+}
+
 const BUG_ROWS = [
   '...a........a...',
   '....a......a....',
@@ -191,6 +214,20 @@ const SPRITES = {
     '...bbbb...',
     '...bbbb...',
   ], { s: rgb(75, 82, 92), w: rgb(225, 230, 235), g: rgb(55, 205, 90), y: rgb(255, 235, 80), b: rgb(40, 45, 52) }),
+  exit: makeSprite([
+    '.gggggggggg.',
+    'gwwwwwwwwwwg',
+    'gwgwwgwwwwwg',
+    'gwgwwgwwwwwg',
+    'gwggggwgggwg',
+    'gwgwwgwgwwwg',
+    'gwgwwgwgwwwg',
+    'gwggggwgggwg',
+    'gwwwwwwwwwwg',
+    '.gggggggggg.',
+    '.....gg.....',
+    '.....gg.....',
+  ], { g: rgb(35, 185, 85), w: rgb(235, 250, 235) }),
 };
 
 // postac NPC sklada sie z glowy i ciala. Znaki: h wlosy, s skora, e oczy, c gora ubrania, d dol, k czapka/buty, l oprawki okularow

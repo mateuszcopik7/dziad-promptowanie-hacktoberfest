@@ -153,7 +153,11 @@ function apGoal(g) {
     if (room) return { kind: 'door', zone: room.zone, floor: room.floor };
     return npc('uczen');
   }
-  if (g.cleared.includes(AP.FINAL_ZONE)) return { kind: 'done', floor: g.floor };
+  if (g.state === 'escaped') return { kind: 'done', floor: g.floor };
+  if (g.cleared.includes(AP.FINAL_ZONE)) {
+    const o = g.interactables.find(x => x.id === 'wyjscie-szkoly');
+    return { kind: 'interact', floor: o.floor, object: o.id, x: o.x, y: o.y };
+  }
   return { kind: 'door', zone: AP.FINAL_ZONE, floor: 1 };
 }
 

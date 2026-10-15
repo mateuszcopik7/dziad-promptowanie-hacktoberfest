@@ -276,9 +276,19 @@ function useInteractable(g, id) {
     applyEffects(g, fx);
     notify(g, 'ZASILANIE PRZYWRÓCONE — znajdź ucznia na parterze', 260);
     g.events.push('levelup');
-    return;
+    return 'power';
+  }
+  if (id === 'wyjscie-szkoly') {
+    if (!g.qs.items.includes('klucz-wyjscie')) {
+      notify(g, 'DRZWI ZABLOKOWANE — klucz ma źródło ataku w auli', 220);
+      return 'locked';
+    }
+    o.used = true;
+    g.state = 'escaped';
+    return 'escaped';
   }
   notify(g, 'Zasilanie już działa.');
+  return 'used';
 }
 
 function useStairs(g, s) {

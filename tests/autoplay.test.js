@@ -29,7 +29,7 @@ function playThrough(maxTicks) {
       api.applyEffects(g, api.chooseDialog(g.qs, api.QUEST_DEFS, g.npcDefs, req.id, d.result));
       log.talks++;
     } else if (req.type === 'interact') {
-      api.useInteractable(g, req.id);
+      if (api.useInteractable(g, req.id) === 'escaped') log.won = true;
     } else if (req.type === 'stairs') {
       const want = api.apGoal(g).floor, d = api.createDialogue({ npc: 'Klatka schodowa', lines: ['Dokad?'],
         options: [...req.options.map((s, i) => ({ id: 'go:' + i, label: String(s.to[0]) })), { id: 'stay', label: 'Zostan' }] });
@@ -47,7 +47,7 @@ function playThrough(maxTicks) {
       p.hp = Math.max(1, r.hp); g.cleared.push(room.id);
       if (!room.final) api.applyEffects(g, api.onQuestRoom(g.qs, api.QUEST_DEFS));
       api.gainXp(g, r.xp);
-      if (room.final) log.won = true;
+      if (room.final && !g.qs.items.includes('klucz-wyjscie')) g.qs.items.push('klucz-wyjscie');
     }
   }
   log.g = g;
@@ -73,7 +73,7 @@ function runEncounter(e) {
   assert(api.encounterDone(e), 'walka sie skonczyla');
 }
 
-test('autogra przechodzi cala fabule: prad, ratunek, aula i wygrana z Dyrektorem Bugow', () => {
+test('autogra przechodzi cala fabule: prad, ratunek, aula, klucz i wyjscie', () => {
   const log = playThrough(120000);
   assert(log.won, 'finalowy boss pokonany lub oszczedzony, ticki: ' + log.g.ticks);
   ['zasilanie', 'ratunek'].forEach(q => assert.strictEqual(log.g.qs.quests[q].status, 'done', q));
@@ -91,6 +91,9 @@ test('apGoal: bezpieczniki, uczen, sale i aula', () => {
   g.qs.unlocked.push('drzwi-auli');
   assert.strictEqual(api.apGoal(g).kind, 'door');
   g.cleared.push('f1-aula');
+  g.qs.items.push('klucz-wyjscie');
+  assert.strictEqual(api.apGoal(g).object, 'wyjscie-szkoly');
+  g.state = 'escaped';
   assert.strictEqual(api.apGoal(g).kind, 'done');
 });
 
