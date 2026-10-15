@@ -9,30 +9,51 @@ canvas { display: block; width: 100%; height: 100%; image-rendering: pixelated; 
 
 #ui {
   position: absolute; inset: 0; display: flex; align-items: center; justify-content: center;
-  background: rgba(8, 8, 14, .72); overflow: auto;
+  background: radial-gradient(circle at 50% 38%, rgba(36, 76, 75, .32), rgba(4, 5, 11, .88) 58%); overflow: auto;
 }
 #ui[hidden] { display: none; }
+#ui::before { content: ''; position: absolute; inset: 0; pointer-events: none; opacity: .16;
+  background: repeating-linear-gradient(0deg, transparent 0 3px, rgba(130,255,160,.18) 4px); }
 
-.panel { width: min(27em, 92%); max-height: 94%; overflow: auto; padding: 1.2em 1.5em; text-align: center;
-  background: #16161f; border: .12em solid #3a3a4d; box-sizing: border-box; }
-h1 { margin: 0 0 .1em; font-size: 2.5em; letter-spacing: .08em; color: #4ad66d; }
+.panel { position: relative; width: min(29em, 92%); max-height: 94%; overflow: auto; padding: 1.5em 1.7em; text-align: center;
+  background: linear-gradient(145deg, rgba(25,28,40,.98), rgba(10,12,20,.98)); border: .12em solid #4ad66d; box-sizing: border-box;
+  clip-path: polygon(0 1em, 1em 0, calc(100% - 1em) 0, 100% 1em, 100% calc(100% - 1em), calc(100% - 1em) 100%, 1em 100%, 0 calc(100% - 1em));
+  box-shadow: inset 0 0 0 .25em rgba(74,214,109,.06), 0 0 2em rgba(74,214,109,.22); }
+.panel::after { content: ''; position: absolute; left: 1.7em; right: 1.7em; top: .55em; height: .12em;
+  background: linear-gradient(90deg, #4ad66d, #ffe600 55%, transparent); }
+h1 { margin: 0 0 .06em; font-size: 2.7em; line-height: 1; letter-spacing: .09em; color: #71f28c;
+  text-shadow: .08em .08em 0 #173f29, 0 0 .55em rgba(74,214,109,.48); }
 h2 { margin: 0 0 .5em; font-size: 1.6em; }
 h3 { margin: .9em 0 .4em; font-size: .95em; color: #aaa; text-transform: uppercase; }
 .good { color: #4ad66d; }
 .bad { color: #ff6b6b; }
 .sub, .foot, .hint { color: #999; font-size: .85em; }
-.sub { margin: 0 0 1.1em; }
+.sub { margin: .45em 0 1em; }
 .foot { margin: 1em 0 0; }
 .text { text-align: left; font-size: .9em; line-height: 1.45; margin: .5em 0; }
 .keys { color: #bbb; }
 .stats { line-height: 1.6; color: #ccc; }
 
-button { display: block; width: 100%; margin: .5em 0; padding: .65em; font: bold 1em monospace; color: #eee;
-  background: #262636; border: .12em solid #4a4a63; cursor: pointer; }
-button:hover, button:focus-visible { background: #34344a; border-color: #4ad66d; outline: none; }
+button { position: relative; display: block; width: 100%; margin: .52em 0; padding: .72em; font: bold 1em monospace; color: #eee;
+  background: linear-gradient(90deg, #202536, #292c40); border: .1em solid #555a73; cursor: pointer; transition: transform .09s, border-color .09s, background .09s; }
+button::before { content: '›'; position: absolute; left: .65em; color: #4ad66d; }
+button:hover, button:focus-visible { transform: translateX(.18em); background: linear-gradient(90deg, #263b39, #293444); border-color: #71f28c; outline: none; color: #fff; }
+button[data-a="play"] { color: #09110c; background: linear-gradient(90deg, #4ad66d, #91f4a4); border-color: #c8ffd2; text-shadow: none; }
+button[data-a="play"]::before { color: #09110c; }
+
+.eyebrow { margin: 0 0 .55em; color: #ffe600; font-size: .72em; font-weight: bold; letter-spacing: .18em; }
+.logo-line { width: 72%; height: .16em; margin: .35em auto; background: linear-gradient(90deg, transparent, #4ad66d, #ffe600, transparent); }
+.feature-grid { display: grid; grid-template-columns: repeat(3, 1fr); gap: .4em; margin: 0 0 1em; }
+.feature-grid span { padding: .4em .2em; color: #9eabc4; background: rgba(89,101,132,.14); border: 1px solid rgba(113,242,140,.25); font-size: .7em; font-weight: bold; letter-spacing: .05em; }
 
 .row { display: flex; align-items: center; justify-content: space-between; gap: .6em; margin: .5em 0; font-size: .9em; text-align: left; }
 .row span { flex: 1; }
 .row input[type=range] { flex: 1.3; accent-color: #4ad66d; }
 .row output { width: 3em; text-align: right; color: #4ad66d; }
 .row button.key { width: 10em; margin: 0; padding: .35em; font-size: .85em; }
+
+@media (max-width: 640px) {
+  .panel { width: 94%; padding: 1.1em; }
+  h1 { font-size: 2.15em; }
+  .feature-grid { gap: .25em; }
+}

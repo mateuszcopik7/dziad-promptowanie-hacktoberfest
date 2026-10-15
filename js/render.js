@@ -236,13 +236,13 @@ function renderFixedBenches(g, cam) {
   decorDepth.fill(Infinity);
   const wood = rgb(206, 140, 74), metal = rgb(40, 84, 168);
   for (const b of g.world.floors[g.floor].decor.filter(d => d.kind === 'bench')) {
-    const wall = b.y < 28 ? -1 : 1, back = b.y + wall * 0.19;
-    decorBox(g, cam, b.x - 0.9, b.x + 0.9, b.y - 0.22, b.y + 0.22, 0.28, 0.38, wood); // siedzisko
-    decorBox(g, cam, b.x - 0.9, b.x + 0.9, back - 0.035, back + 0.035, 0.47, 0.58, wood);
-    decorBox(g, cam, b.x - 0.9, b.x + 0.9, back - 0.035, back + 0.035, 0.68, 0.80, wood);
-    for (const lx of [b.x - 0.72, b.x + 0.72]) {
-      decorBox(g, cam, lx - 0.045, lx + 0.045, b.y - 0.17, b.y - 0.08, 0.02, 0.3, metal);
-      decorBox(g, cam, lx - 0.045, lx + 0.045, back - 0.04, back + 0.04, 0.3, 0.73, metal);
+    const wall = b.y < 28 ? -1 : 1, back = b.y + wall * 0.14;
+    decorBox(g, cam, b.x - 0.62, b.x + 0.62, b.y - 0.16, b.y + 0.16, 0.22, 0.29, wood); // siedzisko
+    decorBox(g, cam, b.x - 0.62, b.x + 0.62, back - 0.025, back + 0.025, 0.39, 0.47, wood);
+    decorBox(g, cam, b.x - 0.62, b.x + 0.62, back - 0.025, back + 0.025, 0.53, 0.62, wood);
+    for (const lx of [b.x - 0.49, b.x + 0.49]) {
+      decorBox(g, cam, lx - 0.035, lx + 0.035, b.y - 0.12, b.y - 0.06, 0.02, 0.23, metal);
+      decorBox(g, cam, lx - 0.035, lx + 0.035, back - 0.03, back + 0.03, 0.23, 0.57, metal);
     }
   }
 }
@@ -357,7 +357,9 @@ function drawArrow(cx, cy, rel, size, color) {
 function drawObjective(g, o) {
   const bw = W * SCALE, pw = 400, ph = 60, px = (bw - pw) / 2, py = 8;
   sctx.fillStyle = 'rgba(6,8,16,.88)'; sctx.fillRect(px, py, pw, ph);
+  sctx.fillStyle = '#4ad66d'; sctx.fillRect(px, py, 5, ph);
   sctx.strokeStyle = '#ffe600'; sctx.lineWidth = 2; sctx.strokeRect(px, py, pw, ph);
+  sctx.fillStyle = '#ffe600'; sctx.fillRect(px + pw - 38, py, 38, 3); sctx.fillRect(px + pw - 3, py, 3, 15);
   sctx.font = 'bold 11px monospace'; hudText('CEL', px + 64, py + 15, '#ffe600');
   const tw = pw - 76;
   let size = 15, lines;
@@ -385,6 +387,8 @@ function drawQuestTracker(g) {
   const rows = tr.map(t => ({ ok: t.ready, lines: wrapText((t.ready ? '[ok] ' : '[ ] ') + t.title + ': ' + t.text, maxW) }));
   const hgt = 40 + rows.reduce((n, r) => n + r.lines.length * 22 + 6, 0);
   sctx.fillStyle = 'rgba(6,8,16,.82)'; sctx.fillRect(10, y0, pw, hgt);
+  sctx.fillStyle = '#ffe600'; sctx.fillRect(10, y0, 4, hgt);
+  sctx.strokeStyle = 'rgba(255,230,0,.35)'; sctx.lineWidth = 1; sctx.strokeRect(10, y0, pw, hgt);
   sctx.font = 'bold 16px monospace'; hudText('ZADANIA', 20, y0 + 24, '#ffe600');
   sctx.font = 'bold 15px monospace';
   let y = y0 + 50;
@@ -405,7 +409,9 @@ function drawHud(g) {
     if (m.ch) { sctx.font = 'bold 38px monospace'; hudText(m.ch, m.x * SCALE, m.y * SCALE - 4, m.ch === '?' ? '#4ad66d' : m.ch === '>' ? '#7cc4ff' : '#ffe600', 'center'); }
   }
   // pasek statusu
-  sctx.fillStyle = 'rgba(0,0,0,.78)'; sctx.fillRect(0, y, bw, bar);
+  sctx.fillStyle = 'rgba(4,7,14,.9)'; sctx.fillRect(0, y, bw, bar);
+  sctx.fillStyle = '#4ad66d'; sctx.fillRect(0, y, bw, 2);
+  sctx.fillStyle = 'rgba(74,214,109,.12)'; sctx.fillRect(0, y + 2, bw, 5);
   sctx.font = 'bold 22px monospace';
   hudText('HP ' + p.hp + '/' + p.maxHp, 16, y + 25, '#ff6b6b');
   hudBar(16, y + 36, 180, p.hp / p.maxHp, '#ff6b6b');

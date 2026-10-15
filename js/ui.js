@@ -30,9 +30,12 @@ const SCREENS = {
     <p class="text">Przygotowuję sylwetki i portrety nauczycieli.</p>`,
 
   main: () => `
+    <p class="eyebrow">ZSTI // PROTOKÓŁ AWARYJNY</p>
     <h1>GLIWICE RAID</h1>
+    <div class="logo-line"></div>
     <p class="sub">Przywróć prąd. Uwolnij nauczycieli. Ocal ZSTI.</p>
-    <button data-a="play">Graj</button>
+    <div class="feature-grid"><span>4 PIĘTRA</span><span>QUESTY</span><span>BOSSOWIE</span></div>
+    <button data-a="play">▶ ROZPOCZNIJ MISJĘ</button>
     <button data-a="bot">Bot przechodzi grę</button>
     <button data-a="howto">Jak grać</button>
     <button data-a="settings">Ustawienia</button>
